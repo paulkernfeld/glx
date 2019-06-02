@@ -1,0 +1,40 @@
+[package]
+name = "glx"
+version = "0.1.0"
+authors = ["Paul Kernfeld <paulkernfeld@gmail.com>"]
+edition = "2018"
+build = "build.rs"
+
+[dependencies]
+byteorder = "*"
+csv = "1"
+env_logger = "0.6"
+euclid = "*"
+flate2 = "*"
+geo = "0.12"
+geo-types = "0.4"
+log = "0.4"
+lyon = "*"
+palette = "0.4"
+protobuf = "2"
+rayon = "1"
+rstar = "*"
+shaderc = "0.5"
+wgpu = { "path" = "../../repos/wgpu-rs" }
+
+[dev-dependencies]
+lazy_static = "1"
+osmpbfreader = "0.13"
+
+[features]
+default = []
+metal = ["wgpu/metal"]
+dx11 = ["wgpu/dx11"]
+dx12 = ["wgpu/dx12"]
+vulkan = ["wgpu/vulkan"]
+
+[profile.dev]
+opt-level = 3
+
+[build-dependencies]
+protoc-rust = "2"
