@@ -6,11 +6,11 @@ use euclid::{Box2D, Point2D};
 use log::*;
 use std::collections::HashMap;
 
-use openstreetmap::graphics;
-use openstreetmap::graphics::*;
-use openstreetmap::protos::osmformat::Way;
-use openstreetmap::protos::*;
-use openstreetmap::*;
+use glx::graphics;
+use glx::graphics::*;
+use glx::protos::osmformat::Way;
+use glx::protos::*;
+use glx::*;
 use rayon::prelude::*;
 use std::fs::File;
 

@@ -316,8 +316,8 @@ pub fn leggo(styled_geoms: Vec<StyledGeom>, viewport: Box2D<f32>) {
     });
 
     debug!("building shaders...");
-    let vs_bytes = graphics::load_glsl("triangle.vert", shaderc::ShaderKind::Vertex);
-    let fs_bytes = graphics::load_glsl("triangle.frag", shaderc::ShaderKind::Fragment);
+    let vs_bytes = graphics::load_glsl("graphics.vert", shaderc::ShaderKind::Vertex);
+    let fs_bytes = graphics::load_glsl("graphics.frag", shaderc::ShaderKind::Fragment);
     let vs_module = device.create_shader_module(&vs_bytes);
     let fs_module = device.create_shader_module(&fs_bytes);
 

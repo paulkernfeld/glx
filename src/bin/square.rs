@@ -1,7 +1,7 @@
 extern crate env_logger;
 
-use openstreetmap::graphics;
-use openstreetmap::graphics::*;
+use glx::graphics;
+use glx::graphics::*;
 
 use euclid::*;
 use log::*;

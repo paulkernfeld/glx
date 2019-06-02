@@ -1,5 +1,5 @@
 //! ```
-//! use openstreetmap::protos::read_blobs;
+//! use glx::protos::read_blobs;
 //! use std::fs::File;
 //!
 //! assert!(read_blobs(File::open("pbf/massachusetts-latest.osm.pbf").unwrap()).next().is_some());
