@@ -83,7 +83,7 @@ impl BlobData {
         let mut buffer = Vec::new();
         let raw_size: i32 = {
             let mut encoder = ZlibEncoder::new(&mut buffer, flate2::Compression::default());
-            message.write_to_writer(&mut encoder);
+            message.write_to_writer(&mut encoder).unwrap();
             i32::try_from(encoder.total_in()).unwrap()
         };
 
