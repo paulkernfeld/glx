@@ -4,7 +4,7 @@ This presentation chronicles my attempts to use Rust to understand how the Green
 
 ![Transit times after](etc/times-after.png)
 
-This map shows transit times to downtown ranging from 10 minutes (orange) to 40 minutes (blue).
+This map shows relative transit times to downtown.
 
 ## About the GLX
 
@@ -228,8 +228,9 @@ Goals: produce useful and informative maps of the Somerville area.
 
 ## Colors
 
-- Using CIE L* a* b* color space, designed 
-Well actually I'm using 
+- Using CIE L* a* b* color space, designed to be perceptually uniform. 
+
+Well actually I'm using CIE L*C*h°, a cylindrical version of that space. 
 
 Hold lightness constant.
 
