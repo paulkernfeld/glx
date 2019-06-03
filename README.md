@@ -1,23 +1,25 @@
-# TO DO
-- Complete presentation
-- Clean code
-- Fix horizontal-vertical squashing
-- Render in whole screen
-- Draw borders on un-drawn area
-- Use correct depth... relations?
-
 # Analyzing the Green Line Extension with OpenStreetMap
 
-The Green Line Extension will add seven new stations to the north end of the MBTA green line. It will cost about $3
-billion and is slated for completion about two years from now.
+This presentation chronicles my attempts to use Rust to understand how the Green Line Extension will affect commutes in Somerville.
 
-[insert a map showing the planned work, in comparison to red and green lines]
+![Transit times after](etc/times-after.png)
 
-I want to look at how much the Green Line will change transit times.
+This map shows transit times to downtown ranging from 10 minutes (orange) to 40 minutes (blue).
+
+## About the GLX
+
+The Green Line Extension will add seven new stations to the north end of the MBTA green line. It will cost about $3 billion and is slated for completion about two years from now.
+
+![Planned Green Line stations](etc/glx-wikipedia.png)
+
+[Map](https://commons.wikimedia.org/wiki/File:Green_Line_Extension.svg) Courtesy Wikipedia user Pi.1415926535, CC-BY-SA 3.0
+
+
+I want to look at how much the Green Line will change transit times for residents living near planned stations.
 
 ## 🐃 Yak Shaving 🐃 
 
-I'd like to analyze transit times.. so I clearly need to write an OpenStreetMap file ingester and a GPU-based map
+I'd like to analyze transit times... so I clearly need to write an OpenStreetMap file ingester and a GPU-based map
 renderer!?
 
 - Ingester
@@ -26,13 +28,11 @@ renderer!?
 
 ## OpenStreetMap
 
-OpenStreetMap is like Wikipedia for geographical data. Besides literally streets, it contains buildings, parks, tracks,
-and more. It powers many maps that you see around the Internet.
+OpenStreetMap is like Wikipedia for geographical data. Besides literally streets, it contains over 5 billion buildings, parks, train tracks, trees, benches, and much more. This data set powers many maps that you see around the Internet.
 
 ## Getting the data
 
-[Geofabrik GmbH](http://download.geofabrik.de/) provides downloads of various regions, down to U.S. states. I chose to
-download the Massachusetts data in `.pbf` format, The data is is encoded with Google's protocol buffers, a binary
+[Geofabrik GmbH](http://download.geofabrik.de/) provides downloads of various regions, down to U.S. states. I chose to download the Massachusetts data in `.pbf` format, The data is is encoded with Google's protocol buffers, a binary
 encoding format. 
 
 ## OSM technical
@@ -132,53 +132,61 @@ Challenges:
 - Keeping up with the performance tricks
 - I needed many layers of mapping, filtering and flat mapping
 
-## Back to the actual analysis
+## Optimizing ingestion
 
-Generally, the methodology is:
+Because the file is split into blocks, I was able to decode each block individually, resulting in a huge speedup.
 
-1. Calculate the transit time from a station to Boston Common
-2. Calculate the walking time from any place to each station
-3. Find the best station for each place
+## The actual analysis
+
+My model of a typical commute is:
+
+1. Walk to the station
+2. Wait for the train
+3. Train goes downtown
+
+In this model, each resident chooses the station that will result in the lowest total transit time.
 
 Possible extensions:
 
-- Other destinations
+- Other destinations, like Harvard, MIT, and Kendall are huge cent
 - Other modes of transport
 - Larger geographic region
+
+## Walking Times
+
+"As the crow flies" with a constant penalty to account for the fact that people don't fly.
+
+I expect this to introduce some error, especially near difficult-to-pass objects like I-93 and McGrath Highway.
+
+Possible extension: pathfinding with actual sidewalk data
 
 ## Transit time from station to downtown
 
 **Existing lines:** use schedules, test calibration by hand
 
-**GLX:** measure distance between stations, comparing to existing D branch of the Green Line. I'm assuming that the trains will move at the same average speed, 19 MPH, because the density of stations is not too far off.
+**GLX:** measure distance between stations, comparing to existing D branch of the Green Line. I'm assuming that the trains will move at the same average speed, 19 MPH, because the density of stations is not too far off (thanks JBR!).
+
+After doing this, I found a copy of the 2009 [Draft Environmental Impact Report](http://www.somervillestep.org/files/GreenLineDEIR_text_1009.pdf) which thankfully confirmed the sanity of these estimates.
 
 ## Estimated Transit Times
 
-Measured in minutes to Lechmere
+Measured in minutes to Lechmere.
 
 - Lechmere: 0
-- Union: 3/4.5
-- E. Somerville: 3/?
-- Gilman: 5/5
-- Magoun: 6/7
-- Ball: 9/8.5
-- College Ave. 10/10.25
+- Union: 3 (DEIR: 4.5)
+- E. Somerville: 3 (no DEIR)
+- Gilman: 5 (DEIR: 5)
+- Magoun: 6 (DEIR: 7)
+- Ball: 9 (DEIR: 8.5)
+- College Ave. 10 (DEIR: 10.25)
+
+## Wait times
 
 I also estimated the typical wait time between trains at each station.
 
-On the low end, Lechmere will have an expected wait only of 2 minutes since it's on both Green Line branches. On the high end, Sullivan and Assembly Row are more like 9 minutes.
-
-http://www.somervillestep.org/files/GreenLineDEIR_text_1009.pdf
+On the low end, Lechmere will have an expected wait only of 2 minutes since it's on both Green Line branches. On the high end, the orange line is more like 9 minutes.
 
 Possible extension: incorporate subway on-time performance
-
-## Walking Times
-
-"As the crow flies" with a constant penalty.
-
-I expect this to introduce some error, especially near difficult-to-pass objects like I-93 and McGrath Highway.
-
-Possible extension: pathfinding with actual sidewalk data
 
 ## Finding the best station for a given location
 
@@ -186,9 +194,13 @@ Currently: simply try each station for the given location and use the best one. 
 
 [show a map w/ the best vs. closest for every station]
 
+Possible extension: use heuristics to consider fewer stations
+
+# Final Product
+
 ## Rendering a map
 
-Goals: produce useful and informative maps of Somerville.
+Goals: produce useful and informative maps of the Somerville area.
 
 ## What should the map show?
 
@@ -196,8 +208,6 @@ Goals: produce useful and informative maps of Somerville.
 2. I should be able to orient myself and to approximately find a particular building.
 3. It should look inoffensive.
 4. It should convey the scale of the city.
-
-
 
 # End
 
@@ -216,6 +226,15 @@ Goals: produce useful and informative maps of Somerville.
 
 
 # Notes
+
+## TO DO
+
+- "Complete" presentation
+- Clean code
+- Fix horizontal-vertical squashing
+- Render in whole screen
+- Draw borders on un-drawn area
+- Use correct depth... relations?
 
 blue to yellow as primary hue dimension, b/c resilient to deutera
 
