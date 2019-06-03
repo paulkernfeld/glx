@@ -27,7 +27,7 @@ lazy_static = "1"
 osmpbfreader = "0.13"
 
 [features]
-default = []
+default = ["metal"]
 metal = ["wgpu/metal"]
 dx11 = ["wgpu/dx11"]
 dx12 = ["wgpu/dx12"]
