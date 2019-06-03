@@ -196,18 +196,27 @@ Currently: simply try each station for the given location and use the best one. 
 
 Possible extension: use heuristics to consider fewer stations
 
-# Final Product
-
-## Rendering a map
+# Rendering a map
 
 Goals: produce useful and informative maps of the Somerville area.
 
-## What should the map show?
+Two tricky problems here:
 
-1. It should show the new, old, and/or difference in travel time.
-2. I should be able to orient myself and to approximately find a particular building.
-3. It should look inoffensive.
-4. It should convey the scale of the city.
+1. What do I want to draw?
+2. How do I draw it?
+
+## What do I want to draw?
+
+The map should:
+
+1. show the new, old, and/or difference in travel time
+2. orient myself and to approximately find a particular building
+3. look inoffensive
+4. convey the scale of the city
+
+## This implies:
+
+
 
 # End
 
@@ -232,8 +241,7 @@ Goals: produce useful and informative maps of the Somerville area.
 
 Well actually I'm using CIE L*C*h°, a cylindrical version of that space. 
 
-Hold lightness constant.
-
+Hold lightness and chroma mostly constant, vary hue
 
 # Notes
 
