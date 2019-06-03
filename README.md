@@ -224,6 +224,15 @@ Goals: produce useful and informative maps of the Somerville area.
 - I'm using a crude model of walking, ignoring the environment. In particular, this will be inaccurate around large
   barriers, like McGrath Highway
 
+# Graphics
+
+## Colors
+
+- Using CIE L* a* b* color space, designed 
+Well actually I'm using 
+
+Hold lightness constant.
+
 
 # Notes
 
