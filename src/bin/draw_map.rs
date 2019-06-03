@@ -24,7 +24,7 @@ struct Station {
 }
 
 fn load_stations(centroid: Point<f32>) -> Vec<Station> {
-    csv::Reader::from_reader(std::fs::File::open("stations.csv").unwrap())
+    csv::Reader::from_reader(std::fs::File::open("data/GLX Project MBTA Data - Stations.csv").unwrap())
         .records()
         .map(|row| {
             let row = row.unwrap();
