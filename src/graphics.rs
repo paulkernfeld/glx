@@ -15,7 +15,7 @@ use palette::{Gradient, Lch, Srgb};
 
 pub fn get_gradient_color(mut scalar: f32) -> [f32; 3] {
     // Quantize the colors
-    let n_chunks: f32 = 7.0;
+    let n_chunks: f32 = 4.0;
     scalar = (scalar * n_chunks).floor() / (n_chunks - 1.0);
     let lightness = 70.0;
     match Srgb::from(

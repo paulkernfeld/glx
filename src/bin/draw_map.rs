@@ -19,8 +19,9 @@ use geo_types::Point;
 #[derive(Debug)]
 struct Station {
     name: String,
-    minutes_to_psdtx: f32,
+    minutes_to_ps_dtx: f32,
     location_x_y: Point2D<f32>,
+    glx: bool,
 }
 
 fn load_stations(centroid: Point<f32>) -> Vec<Station> {
@@ -28,13 +29,14 @@ fn load_stations(centroid: Point<f32>) -> Vec<Station> {
         .records()
         .map(|row| {
             let row = row.unwrap();
+            let glx = &row[1] == "#N/A";
             let lat = row[6].parse().unwrap();
             let lon = row[7].parse().unwrap();
-            let minutes_to_boston_common = row[5].parse().unwrap();
             Station {
                 name: row[0].to_string(),
                 location_x_y: lon_lat_to_x_y(&centroid, (lon, lat)),
-                minutes_to_psdtx: minutes_to_boston_common,
+                minutes_to_ps_dtx: row[5].parse().unwrap(),
+                glx,
             }
         })
         .collect()
@@ -54,7 +56,7 @@ fn best_station(stations: &[Station], location_x_y: Point2D<f32>) -> BestStation
         let fudge_factor = 1.2;
         let walk_minutes =
             distance_walking / average_walking_speed_meters_per_minute * fudge_factor;
-        walk_minutes + station.minutes_to_psdtx
+        walk_minutes + station.minutes_to_ps_dtx
     };
 
     let best_station = stations
@@ -72,7 +74,7 @@ fn make_styled_geoms(bb: Box2D<f32>) -> Vec<StyledGeom> {
     // Somerville city hall (93 Highland)
     let centroid: geo_types::Point<f32> = geo_types::Point::new(-71.098472, 42.386755);
 
-    let stations = load_stations(centroid);
+    let stations: Vec<Station> = load_stations(centroid).into_iter().filter(|station| !station.glx).collect();
 
     info!("Loading OSM data...");
     let reader = File::open("pbf/massachusetts-latest.osm.pbf").unwrap();
@@ -133,7 +135,7 @@ fn make_styled_geoms(bb: Box2D<f32>) -> Vec<StyledGeom> {
                 .collect();
             if way.tags.contains_key("building") {
                 let color =
-                    get_gradient_color((best_station(&stations, nodes[0]).time - 10.0) / 40.0);
+                    get_gradient_color((best_station(&stations, nodes[0]).time - 10.0) / 30.0);
                 Some(StyledGeom {
                     geom: Geom::Polygon(nodes),
                     color,
@@ -189,7 +191,7 @@ mod tests {
             station.location_x_y.to_vector().length() > 100.0,
             "Gilman is not THAT close to city hall"
         );
-        assert_eq!(station.minutes_to_psdtx, 22.0);
+        assert_eq!(station.minutes_to_ps_dtx, 22.0);
     }
 
     #[test]
