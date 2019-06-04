@@ -13,15 +13,18 @@ use euclid::*;
 use lyon::path::Path;
 use palette::{Gradient, Lch, Srgb};
 
-pub fn get_gradient_color(mut scalar: f32) -> [f32; 3] {
-    // Quantize the colors
-    let n_chunks: f32 = 4.0;
+/// Return a color scale from cold at 0 to warm at 1. This will draw attention towards higher
+/// values.
+///
+/// This scale has high distinguishability.
+pub fn scale_temperature(mut scalar: f32, n_chunks: f32) -> [f32; 3] {
     scalar = (scalar * n_chunks).floor() / (n_chunks - 1.0);
     let lightness = 70.0;
+    let chroma = 90.0;
     match Srgb::from(
         Gradient::new(vec![
-            Lch::new(lightness, 90.0, 60.0),
-            Lch::new(lightness, 90.0, 280.0),
+            Lch::new(lightness, chroma, 60.0),
+            Lch::new(lightness, chroma, 280.0),
         ])
         .get(scalar),
     )
@@ -29,6 +32,28 @@ pub fn get_gradient_color(mut scalar: f32) -> [f32; 3] {
     {
         (r, g, b) => [r, g, b],
     }
+}
+
+/// Return a color scale from drab at 0 to colorful at 1. This will strongly draw attention towards
+/// higher values.
+///
+/// This color scale has medium distinguishability.
+pub fn scale_chroma(mut scalar: f32, n_chunks: f32) -> [f32; 3] {
+    // Quantize the colors
+    scalar = (scalar * n_chunks).floor() / (n_chunks - 1.0);
+    let lightness = 70.0;
+    let chroma = 90.0;
+    match Srgb::from(
+        Gradient::new(vec![
+            Lch::new(lightness, 0.0, 60.0),
+            Lch::new(lightness, 90.0, 60.0),
+        ])
+            .get(scalar),
+    )
+        .into_components()
+        {
+            (r, g, b) => [r, g, b],
+        }
 }
 
 #[derive(Clone, Copy, Debug)]

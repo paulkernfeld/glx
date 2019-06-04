@@ -16,7 +16,7 @@ use std::fs::File;
 
 use geo_types::Point;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 struct Station {
     name: String,
     minutes_to_ps_dtx: f32,
@@ -42,7 +42,7 @@ fn load_stations(centroid: Point<f32>) -> Vec<Station> {
         .collect()
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 struct BestStation {
     station_name: String,
     time: f32,
@@ -74,7 +74,8 @@ fn make_styled_geoms(bb: Box2D<f32>) -> Vec<StyledGeom> {
     // Somerville city hall (93 Highland)
     let centroid: geo_types::Point<f32> = geo_types::Point::new(-71.098472, 42.386755);
 
-    let stations: Vec<Station> = load_stations(centroid).into_iter().filter(|station| !station.glx).collect();
+    let stations: Vec<Station> = load_stations(centroid);
+    let stations_before: Vec<Station> = stations.clone().into_iter().filter(|station| !station.glx).collect();
 
     info!("Loading OSM data...");
     let reader = File::open("pbf/massachusetts-latest.osm.pbf").unwrap();
@@ -134,8 +135,9 @@ fn make_styled_geoms(bb: Box2D<f32>) -> Vec<StyledGeom> {
                 .map(|node| dense_node_to_x_y(&node, centroid))
                 .collect();
             if way.tags.contains_key("building") {
-                let color =
-                    get_gradient_color((best_station(&stations, nodes[0]).time - 10.0) / 30.0);
+                let best_before = best_station(&stations_before, nodes[0]);
+                let best_after = best_station(&stations, nodes[0]);
+                let color = scale_chroma((best_before.time - best_after.time) / 20.0, 3.0);
                 Some(StyledGeom {
                     geom: Geom::Polygon(nodes),
                     color,
