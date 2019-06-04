@@ -233,17 +233,30 @@ Strongly inspired by Vulkan, but with a compatibility layer to work with Metal a
 
 ![Transit times before](etc/times-before.png)
 
+Colors:
+
+- 5–23 minutes
+- 12–30 minutes
+- 20-38 minutes
+- 28-45 minutes
+
+Let's use an uncertainty of 5 minutes: think about headway, train delays, and modeling inaccuracies 
+
 There is an underserved corridor in central and northern parts of Somerville.
 
 ![Transit times after](etc/times-after.png)
 
 Now that corridor is better-served. 👍
 
+![Transit times delta](etc/times-delta.png)
+
+How much better-served? In this map, the data ranges from 0 to 20 minutes. The highest deltas can be seen in Union Square, Gilman Square, and southeast of Magoun Square.
+
 # End
 
 ## Recap
 
-I used [OpenStreetMap](http://openstreetmap.org/) and [wgpu-rs](https://github.com/gfx-rs/wgpu-rs) to render maps of Somerville with Rust.
+I used [OpenStreetMap](http://openstreetmap.org/) and [wgpu-rs](https://github.com/gfx-rs/wgpu-rs) to analyze MBTA's upcoming Green Line Extension with Rust.
 
 ## Other useful data
 
@@ -262,11 +275,15 @@ I used [OpenStreetMap](http://openstreetmap.org/) and [wgpu-rs](https://github.c
 
 ## Colors
 
+I'm using the [`palette`](https://github.com/Ogeon/palette) crate for color space math. 
+
 - Using CIE L* a* b* color space, designed to be perceptually uniform. 
 
 Well actually I'm using CIE L*C*h°, a cylindrical version of that space. 
 
 Hold lightness and chroma mostly constant, vary hue
+
+Use color palettes friendly to color blind people, i.e. don't contrast red vs. green
 
 # Notes
 
