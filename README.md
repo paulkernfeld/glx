@@ -210,15 +210,40 @@ Two tricky problems here:
 The map should:
 
 1. show the new, old, and/or difference in travel time
-2. orient myself and to approximately find a particular building
-3. look inoffensive
-4. convey the scale of the city
+2. orient me
+3. look good
 
-## This implies:
+## Drawing with Rust
 
+Rust's 2D graphics landscape is evolving rapidly!
 
+[A Guide to Rust Graphics Libraries](https://wiki.alopex.li/AGuideToRustGraphicsLibraries2019?utm_source=share&utm_medium=ios_app), As of May 2019 (author of ggez, so this is from the perspective of games)
+
+What graphics API? `wgpu-rs` because I am a library hypebeast.
+
+## [wgpu-rs](https://github.com/gfx-rs/wgpu-rs)
+
+Back ends: Vulkan, Metal, and DirectX
+
+The successor to the deprecated `gfx` crate
+
+Strongly inspired by Vulkan, but with a compatibility layer to work with Metal and DirectX. Higher-level than `gfx-hal`
+
+# Results
+
+![Transit times before](etc/times-before.png)
+
+There is an underserved corridor in central and northern parts of Somerville.
+
+![Transit times after](etc/times-after.png)
+
+Now that corridor is better-served. 👍
 
 # End
+
+## Recap
+
+I used [OpenStreetMap](http://openstreetmap.org/) and [wgpu-rs](https://github.com/gfx-rs/wgpu-rs) to render maps of Somerville with Rust.
 
 ## Other useful data
 
