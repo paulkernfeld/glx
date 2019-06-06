@@ -277,13 +277,11 @@ I used [OpenStreetMap](http://openstreetmap.org/) and [wgpu-rs](https://github.c
 
 I'm using the [`palette`](https://github.com/Ogeon/palette) crate for color space math. 
 
-- Using CIE L* a* b* color space, designed to be perceptually uniform. 
+Starting with CIE L\*a\*b\* color space, designed to be perceptually uniform.
 
-Well actually I'm using CIE L*C*h°, a cylindrical version of that space. 
+To specify colors by hand, using CIE L\*C\*h°, a cylindrical version of that space. 
 
-Hold lightness and chroma mostly constant, vary hue
-
-Use color palettes friendly to color blind people, i.e. don't contrast red vs. green
+Use color palettes friendly to color blind people, i.e. don't contrast red vs. green.
 
 # Notes
 

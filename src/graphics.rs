@@ -402,7 +402,7 @@ pub fn leggo(styled_geoms: Vec<StyledGeom>, viewport: Box2D<f32>) {
                 wgpu::VertexAttributeDescriptor {
                     attribute_index: 1,
                     format: wgpu::VertexFormat::Float3,
-                    offset: 8, // I have no idea why this is 8
+                    offset: 8, // Because this is preceded by two 4-byte floats?
                 },
             ],
         }],
