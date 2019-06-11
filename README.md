@@ -15,12 +15,11 @@ The Green Line Extension will add seven new stations to the north end of the MBT
 [Map](https://commons.wikimedia.org/wiki/File:Green_Line_Extension.svg) Courtesy Wikipedia user Pi.1415926535, CC-BY-SA 3.0
 
 
-I want to look at how much the Green Line will change transit times for residents living near planned stations.
+I want to look at how much the Green Line will change transit times from Somerville to downtown Boston.
 
 ## 🐃 Yak Shaving 🐃 
 
-I'd like to analyze transit times... so I clearly need to write an OpenStreetMap file ingester and a GPU-based map
-renderer!?
+I'd like to analyze transit times... so I clearly need to write an OpenStreetMap file ingester and a GPU-based map renderer!?
 
 - Ingester
 - Renderer
@@ -148,9 +147,9 @@ In this model, each resident chooses the station that will result in the lowest 
 
 Possible extensions:
 
-- Other destinations, like Harvard, MIT, and Kendall are huge cent
-- Other modes of transport
-- Larger geographic region
+- Other destinations. For example, Harvard, MIT, and Kendall are huge employment centers.
+- Consider other modes of transport
+- Analyze a larger geographic region
 
 ## Walking Times
 
@@ -161,6 +160,8 @@ I expect this to introduce some error, especially near difficult-to-pass objects
 Possible extension: pathfinding with actual sidewalk data
 
 ## Transit time from station to downtown
+
+I have defined "downtown" as, "Park Street or Downtown Crossing, whichever is closer."
 
 **Existing lines:** use schedules, test calibration by hand
 
@@ -190,9 +191,7 @@ Possible extension: incorporate subway on-time performance
 
 ## Finding the best station for a given location
 
-Currently: simply try each station for the given location and use the best one. This isn't always the *closest* station: for example, if you're halfway between Porter and Magoun, prefer Magoun.
-
-[show a map w/ the best vs. closest for every station]
+Currently: simply try each station for the given location and use the best one. This isn't always the *closest* station: for example, if you're halfway between Porter and Magoun, traveling through Porter will be a bit faster.
 
 Possible extension: use heuristics to consider fewer stations
 
@@ -209,7 +208,7 @@ Two tricky problems here:
 
 The map should:
 
-1. show the new, old, and/or difference in travel time
+1. show the new, old, and/or difference in travel time, in addition to perhaps tracks, stations and other physical features relevant to transit
 2. orient me
 3. look good
 
@@ -235,10 +234,10 @@ Strongly inspired by Vulkan, but with a compatibility layer to work with Metal a
 
 Colors:
 
-- 5–23 minutes
-- 12–30 minutes
-- 20-38 minutes
-- 28-45 minutes
+- Orange: 5–23 minutes
+- Red: 12–30 minutes
+- Pink: 20-38 minutes
+- Blue: 28-45 minutes
 
 Let's use an uncertainty of 5 minutes: think about headway, train delays, and modeling inaccuracies 
 
@@ -252,26 +251,56 @@ Now that corridor is better-served. 👍
 
 How much better-served? In this map, the data ranges from 0 to 20 minutes. The highest deltas can be seen in Union Square, Gilman Square, and southeast of Magoun Square.
 
+![Best stations](etc/best-stations.png)
+
+This map shows the best MBTA line for each location. This shows that a large chunk of Somerville will be "on the green line." 
+
 # End
 
 ## Recap
 
 I used [OpenStreetMap](http://openstreetmap.org/) and [wgpu-rs](https://github.com/gfx-rs/wgpu-rs) to analyze MBTA's upcoming Green Line Extension with Rust.
 
-## Other useful data
+## Data Pipeline
 
-- Wikipedia, as usual 
-- Google Maps is great
+- 1a: Deserialize OSM data with `protobuf` and `rayon`
+- 1b: Parse station data with `csv`
+- 2a: Translate from lat/long with `geo`
+- 3a: Generate shapes
+- 3b: Generate colors with `palette`
+- 4: Tesselate shapes with `lyon`
+- 5: Render map with `wgpu`
+
+## Acknowledgements
+
+- Wikipedia, as usual
+- Google Maps is a nice way to double-check results
 - OpenStreetMap
 
-## Corners cut
+# Notes
 
-- I'm only looking at travel time into Boston. However, there are many other locations worth traveling to.
-- This analysis only considers rail transit, excluding car, bike, bus, and more.
-- I'm using a crude model of walking, ignoring the environment. In particular, this will be inaccurate around large
-  barriers, like McGrath Highway
+## TODO before release
 
-# Graphics
+- "Complete" presentation
+- Clean code
+- Use 
+- Fix horizontal-vertical squashing
+- Render in whole screen
+
+## TODO after release
+
+- Add title and legend
+- Draw background, not houses
+- Draw borders on un-drawn area
+- Use correct depth... relations?
+
+## Map stuff
+
+- [https://leafletjs.com/](Leaflet): A nice JS renderer for OSM data. Looks like this is what's used on OSM's site. The text is pretty aliased and it's a bit noisy.
+- https://maptimeboston.github.io/d3-maptime/#
+- https://www.mapbox.com/tour/#maps
+- http://sotm-eu.org/slides/79.pdf
+- https://programmingdesignsystems.com/color/color-schemes/index.html
 
 ## Colors
 
@@ -283,34 +312,6 @@ To specify colors by hand, using CIE L\*C\*h°, a cylindrical version of that sp
 
 Use color palettes friendly to color blind people, i.e. don't contrast red vs. green.
 
-# Notes
+I was highly inspired by [Color Schemes](https://programmingdesignsystems.com/color/color-schemes/index.html) from 
+*Programming Design Systems*, a free digital book by Rune Madsen.
 
-## TO DO
-
-- "Complete" presentation
-- Clean code
-- Fix horizontal-vertical squashing
-- Render in whole screen
-- Draw borders on un-drawn area
-- Use correct depth... relations?
-
-blue to yellow as primary hue dimension, b/c resilient to deutera
-
-- [https://leafletjs.com/](Leaflet): A nice JS renderer for OSM data. Looks like this is what's used on OSM's site. The text is pretty aliased and it's a bit noisy.
-- https://maptimeboston.github.io/d3-maptime/#
-- https://www.mapbox.com/tour/#maps
-- http://sotm-eu.org/slides/79.pdf
-- https://programmingdesignsystems.com/color/color-schemes/index.html
-
-## Acknowledgements
-
-OpenStreetMap
-
-Top-level libs include:
-
-- wgpu
-- lyon
-
-...and HUNDREDS of lower-level crates that make this possible!
-
-How could you get involved?

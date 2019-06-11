@@ -16,12 +16,20 @@ use std::fs::File;
 
 use geo_types::Point;
 
+#[derive(Clone, Debug, PartialEq)]
+enum MbtaLine {
+    Green,
+    Orange,
+    Red,
+}
+
 #[derive(Clone, Debug)]
 struct Station {
     name: String,
     minutes_to_ps_dtx: f32,
     location_x_y: Point2D<f32>,
     glx: bool,
+    line: MbtaLine,
 }
 
 fn load_stations(centroid: Point<f32>) -> Vec<Station> {
@@ -32,11 +40,18 @@ fn load_stations(centroid: Point<f32>) -> Vec<Station> {
             let glx = &row[1] == "#N/A";
             let lat = row[6].parse().unwrap();
             let lon = row[7].parse().unwrap();
+            let line = match (&row[8], &row[9], &row[10]) {
+                ("1", "0", "0") => MbtaLine::Green,
+                ("0", "1", "0") => MbtaLine::Orange,
+                ("0", "0", "1") => MbtaLine::Red,
+                _ => unimplemented!("Can't handle other lines or combinations yet")
+            };
             Station {
                 name: row[0].to_string(),
                 location_x_y: lon_lat_to_x_y(&centroid, (lon, lat)),
                 minutes_to_ps_dtx: row[5].parse().unwrap(),
                 glx,
+                line,
             }
         })
         .collect()
@@ -44,7 +59,7 @@ fn load_stations(centroid: Point<f32>) -> Vec<Station> {
 
 #[derive(Clone, Debug)]
 struct BestStation {
-    station_name: String,
+    station: Station,
     time: f32,
 }
 
@@ -65,7 +80,7 @@ fn best_station(stations: &[Station], location_x_y: Point2D<f32>) -> BestStation
         .unwrap();
 
     BestStation {
-        station_name: best_station.name.clone(),
+        station: best_station.clone(),
         time: station_time(best_station),
     }
 }
@@ -130,18 +145,30 @@ fn make_styled_geoms(bb: Box2D<f32>) -> Vec<StyledGeom> {
     // Popular tags: https://taginfo.openstreetmap.org/tags
     ways.into_par_iter()
         .filter_map(|way: MyWay| {
-            let nodes: Vec<_> = get_nodes_vec(way.way)
+            let nodes: Vec<_> = get_nodes_vec(way.way.clone())
                 .into_iter()
                 .map(|node| dense_node_to_x_y(&node, centroid))
                 .collect();
             if way.tags.contains_key("building") {
                 let best_before = best_station(&stations_before, nodes[0]);
                 let best_after = best_station(&stations, nodes[0]);
-                let color = scale_chroma((best_before.time - best_after.time) / 20.0, 3.0);
+                let color = match best_after.station.line {
+                    MbtaLine::Green => [0.0 / 255.0, 132.0 / 255.0, 58.0 / 255.0],
+                    MbtaLine::Orange => [239.0 / 255.0, 140.0 / 255.0, 0.0 / 255.0],
+                    MbtaLine::Red => [217.0 / 255.0, 37.0 / 255.0, 10.0 / 255.0],
+                };
                 Some(StyledGeom {
                     geom: Geom::Polygon(nodes),
                     color,
                 })
+//            } else if way.way.get_id() == 688009188 {
+//                Some(StyledGeom {
+//                    geom: Geom::Lines {
+//                        points: nodes,
+//                        width: 8.0,
+//                    },
+//                    color: [0.0 / 255.0, 132.0 / 255.0, 58.0 / 255.0],
+//                })
             } else if way.tags.contains_key("highway") {
                 // It seem like this is in feet
                 let meters_per_foot: f32 = 1.0 / 3.0;

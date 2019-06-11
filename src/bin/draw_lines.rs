@@ -22,7 +22,7 @@ fn main() {
                         ],
                         width: 0.002,
                     },
-                    color: get_gradient_color(ratio),
+                    color: scale_temperature(ratio, 16.0),
                 }
             })
             .collect(),
