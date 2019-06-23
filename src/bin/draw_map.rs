@@ -161,6 +161,7 @@ fn make_styled_geoms(bb: Box2D<f32>) -> Vec<StyledGeom> {
                     geom: Geom::Polygon(nodes),
                     color,
                 })
+                // Showing lines in color is a good idea but requires proper depth
 //            } else if way.way.get_id() == 688009188 {
 //                Some(StyledGeom {
 //                    geom: Geom::Lines {
@@ -168,6 +169,14 @@ fn make_styled_geoms(bb: Box2D<f32>) -> Vec<StyledGeom> {
 //                        width: 8.0,
 //                    },
 //                    color: [0.0 / 255.0, 132.0 / 255.0, 58.0 / 255.0],
+//                })
+//            } else if way.way.get_id() == 236626982 {
+//                Some(StyledGeom {
+//                    geom: Geom::Lines {
+//                        points: nodes,
+//                        width: 8.0,
+//                    },
+//                    color: [217.0 / 255.0, 37.0 / 255.0, 10.0 / 255.0],
 //                })
             } else if way.tags.contains_key("highway") {
                 // It seem like this is in feet

@@ -221,7 +221,7 @@ pub fn cast_slice<T>(data: &[T]) -> &[u8] {
     unsafe { from_raw_parts(data.as_ptr() as *const u8, data.len() * size_of::<T>()) }
 }
 
-pub fn load_glsl(name: &str, source: &str, kind: shaderc::ShaderKind) -> Vec<u8> {
+pub fn glsl_to_spirv(name: &str, source: &str, kind: shaderc::ShaderKind) -> Vec<u8> {
     let mut compiler = shaderc::Compiler::new().unwrap();
     Vec::from(
         compiler
@@ -330,8 +330,8 @@ pub fn leggo(styled_geoms: Vec<StyledGeom>, viewport: Box2D<f32>) {
     });
 
     debug!("building shaders...");
-    let vs_bytes = graphics::load_glsl("graphics.vert", include_str!("shader/graphics.vert"), shaderc::ShaderKind::Vertex);
-    let fs_bytes = graphics::load_glsl("graphics.frag", include_str!("shader/graphics.frag"), shaderc::ShaderKind::Fragment);
+    let vs_bytes = graphics::glsl_to_spirv("graphics.vert", include_str!("shader/graphics.vert"), shaderc::ShaderKind::Vertex);
+    let fs_bytes = graphics::glsl_to_spirv("graphics.frag", include_str!("shader/graphics.frag"), shaderc::ShaderKind::Fragment);
     let vs_module = device.create_shader_module(&vs_bytes);
     let fs_module = device.create_shader_module(&fs_bytes);
 

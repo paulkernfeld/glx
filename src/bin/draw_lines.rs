@@ -1,6 +1,5 @@
 extern crate env_logger;
 
-use glx::graphics;
 use glx::graphics::*;
 
 use euclid::*;
@@ -9,7 +8,7 @@ fn main() {
     // This should show a filled circle that fades angularly along the palette gradient
     // This seems to be able to handle 100,000 lines but not 1,000,000
     let n = 1000;
-    graphics::leggo(
+    leggo(
         (0..n)
             .map(|i| {
                 let ratio = (i as f32) / (n as f32);

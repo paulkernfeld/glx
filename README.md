@@ -131,6 +131,8 @@ Challenges:
 - Keeping up with the performance tricks
 - I needed many layers of mapping, filtering and flat mapping
 
+Yeah, it probably wasn't a good idea. Although I had trouble using the `osmpbf-reader` crate, I'd like to try the `osmpbf` crate.
+
 ## Optimizing ingestion
 
 Because the file is split into blocks, I was able to decode each block individually, resulting in a huge speedup.
@@ -216,7 +218,7 @@ The map should:
 
 Rust's 2D graphics landscape is evolving rapidly!
 
-[A Guide to Rust Graphics Libraries](https://wiki.alopex.li/AGuideToRustGraphicsLibraries2019?utm_source=share&utm_medium=ios_app), As of May 2019 (author of ggez, so this is from the perspective of games)
+*[A Guide to Rust Graphics Libraries](https://wiki.alopex.li/AGuideToRustGraphicsLibraries2019?utm_source=share&utm_medium=ios_app), As of May 2019* (author of ggez, so this is from the perspective of games)
 
 What graphics API? `wgpu-rs` because I am a library hypebeast.
 
@@ -227,6 +229,27 @@ Back ends: Vulkan, Metal, and DirectX
 The successor to the deprecated `gfx` crate
 
 Strongly inspired by Vulkan, but with a compatibility layer to work with Metal and DirectX. Higher-level than `gfx-hal`
+
+## Selecting colors for graphics
+
+Selecting a good color palette is important for clarity and accessibility.
+
+I'm using the [`palette`](https://github.com/Ogeon/palette) crate for color space math. 
+
+Starting with CIE L\*a\*b\* color space, designed to be perceptually uniform.
+
+To specify colors by hand, using CIE L\*C\*h°, a cylindrical version of that space. 
+
+Use color palettes friendly to color blind people, i.e. don't contrast red vs. green.
+
+I was highly inspired by [Color Schemes](https://programmingdesignsystems.com/color/color-schemes/index.html) from 
+*Programming Design Systems*, a free digital book by Rune Madsen.
+
+## Misc. Graphics
+
+I used `lyon` to tesselate my graphics (i.e. to turn everything into triangles)
+
+I wrote simple GLSL shaders and compiled them to Vulkan with `shaderc`.
 
 # Results
 
@@ -282,10 +305,6 @@ I used [OpenStreetMap](http://openstreetmap.org/) and [wgpu-rs](https://github.c
 ## TODO before release
 
 - "Complete" presentation
-- Clean code
-- Use 
-- Fix horizontal-vertical squashing
-- Render in whole screen
 
 ## TODO after release
 
@@ -293,25 +312,14 @@ I used [OpenStreetMap](http://openstreetmap.org/) and [wgpu-rs](https://github.c
 - Draw background, not houses
 - Draw borders on un-drawn area
 - Use correct depth... relations?
+- Fix horizontal-vertical squashing
+- Render in whole screen
 
-## Map stuff
+## Map/design inspiration
 
-- [https://leafletjs.com/](Leaflet): A nice JS renderer for OSM data. Looks like this is what's used on OSM's site. The text is pretty aliased and it's a bit noisy.
-- https://maptimeboston.github.io/d3-maptime/#
-- https://www.mapbox.com/tour/#maps
-- http://sotm-eu.org/slides/79.pdf
-- https://programmingdesignsystems.com/color/color-schemes/index.html
-
-## Colors
-
-I'm using the [`palette`](https://github.com/Ogeon/palette) crate for color space math. 
-
-Starting with CIE L\*a\*b\* color space, designed to be perceptually uniform.
-
-To specify colors by hand, using CIE L\*C\*h°, a cylindrical version of that space. 
-
-Use color palettes friendly to color blind people, i.e. don't contrast red vs. green.
-
-I was highly inspired by [Color Schemes](https://programmingdesignsystems.com/color/color-schemes/index.html) from 
-*Programming Design Systems*, a free digital book by Rune Madsen.
-
+- [Leaflet](https://leafletjs.com/): A nice JS renderer for OSM data. Looks like this is what's used on OSM's site. The text is pretty aliased and it's a bit noisy.
+- [MapBox Light & Dark Maps](https://www.mapbox.com/maps/light-dark/): Elegant pixel-perfect maps
+- http://sotm-eu.org/slides/79.pdf <- link broken?
+- [MBTA Map + Proposal](http://cyrusdahmubed.com/mbta-map) by Cyrus Dahmubed: An MBTA map with some neat twists
+- [New MBTA Red Line Vehicles](https://cdn.mbta.com/sites/default/files/2018-08/new-red-line-vehicles-brochure.pdf)
+- [*How Boston Got Its ‘T’*](https://www.citylab.com/design/2018/09/how-boston-got-its-t/570004/) from CityLab: 
