@@ -238,95 +238,19 @@ pub trait Example {
     fn render(&mut self, frame: &wgpu::SwapChainOutput, device: &mut wgpu::Device);
 }
 
-pub fn run<E: Example>(title: &str) {
-    use wgpu::winit::{
-        ElementState, Event, EventsLoop, KeyboardInput, VirtualKeyCode, Window, WindowEvent,
-    };
-
-    info!("Initializing the device...");
-    env_logger::init();
-    let instance = wgpu::Instance::new();
-    let adapter = instance.get_adapter(&wgpu::AdapterDescriptor {
-        power_preference: wgpu::PowerPreference::HighPerformance,
-    });
-    let mut device = adapter.create_device(&wgpu::DeviceDescriptor {
-        extensions: wgpu::Extensions {
-            anisotropic_filtering: false,
-        },
-    });
-
-    info!("Initializing the window...");
-    let mut events_loop = EventsLoop::new();
-    let window = Window::new(&events_loop).unwrap();
-    window.set_title(title);
-    let size = window
-        .get_inner_size()
-        .unwrap()
-        .to_physical(window.get_hidpi_factor());
-
-    let surface = instance.create_surface(&window);
-    let mut sc_desc = wgpu::SwapChainDescriptor {
-        usage: wgpu::TextureUsageFlags::OUTPUT_ATTACHMENT,
-        format: wgpu::TextureFormat::Bgra8Unorm,
-        width: size.width.round() as u32,
-        height: size.height.round() as u32,
-    };
-    let mut swap_chain = device.create_swap_chain(&surface, &sc_desc);
-
-    info!("Initializing the example...");
-    let mut example = E::init(&sc_desc, &mut device);
-
-    info!("Entering render loop...");
-    let mut running = true;
-    while running {
-        events_loop.poll_events(|event| match event {
-            Event::WindowEvent {
-                event: WindowEvent::Resized(size),
-                ..
-            } => {
-                let physical = size.to_physical(window.get_hidpi_factor());
-                info!("Resizing to {:?}", physical);
-                sc_desc.width = physical.width.round() as u32;
-                sc_desc.height = physical.height.round() as u32;
-                swap_chain = device.create_swap_chain(&surface, &sc_desc);
-                example.resize(&sc_desc, &mut device);
-            }
-            Event::WindowEvent { event, .. } => match event {
-                WindowEvent::KeyboardInput {
-                    input:
-                        KeyboardInput {
-                            virtual_keycode: Some(VirtualKeyCode::Escape),
-                            state: ElementState::Pressed,
-                            ..
-                        },
-                    ..
-                }
-                | WindowEvent::CloseRequested => {
-                    running = false;
-                }
-                _ => {
-                    example.update(event);
-                }
-            },
-            _ => (),
-        });
-
-        let frame = swap_chain.get_next_texture();
-        example.render(&frame, &mut device);
-        running &= !cfg!(feature = "metal-auto-capture");
-    }
-}
-
 pub fn leggo(styled_geoms: Vec<StyledGeom>, viewport: Box2D<f32>) {
     debug!("Initializing WGPU...");
     let instance = wgpu::Instance::new();
+
     let adapter = instance.get_adapter(&wgpu::AdapterDescriptor {
         power_preference: wgpu::PowerPreference::LowPower,
     });
-    let mut device = adapter.create_device(&wgpu::DeviceDescriptor {
+
+    let mut device = adapter.request_device(&wgpu::DeviceDescriptor {
         extensions: wgpu::Extensions {
             anisotropic_filtering: false,
         },
+        limits: wgpu::Limits::default(),
     });
 
     debug!("building shaders...");
@@ -347,11 +271,11 @@ pub fn leggo(styled_geoms: Vec<StyledGeom>, viewport: Box2D<f32>) {
     assert!(!vertex_data.is_empty());
 
     let vertex_buf = device
-        .create_buffer_mapped(vertex_data.len(), wgpu::BufferUsageFlags::VERTEX)
+        .create_buffer_mapped(vertex_data.len(), wgpu::BufferUsage::VERTEX)
         .fill_from_slice(&vertex_data);
 
     let index_buf = device
-        .create_buffer_mapped(index_data.len(), wgpu::BufferUsageFlags::INDEX)
+        .create_buffer_mapped(index_data.len(), wgpu::BufferUsage::INDEX)
         .fill_from_slice(&index_data);
 
     let bind_group_layout =
@@ -370,10 +294,10 @@ pub fn leggo(styled_geoms: Vec<StyledGeom>, viewport: Box2D<f32>) {
             module: &vs_module,
             entry_point: "main",
         },
-        fragment_stage: wgpu::PipelineStageDescriptor {
+        fragment_stage: Some(wgpu::PipelineStageDescriptor {
             module: &fs_module,
             entry_point: "main",
-        },
+        }),
         rasterization_state: wgpu::RasterizationStateDescriptor {
             front_face: wgpu::FrontFace::Ccw,
             cull_mode: wgpu::CullMode::None,
@@ -384,25 +308,25 @@ pub fn leggo(styled_geoms: Vec<StyledGeom>, viewport: Box2D<f32>) {
         primitive_topology: wgpu::PrimitiveTopology::TriangleList,
         color_states: &[wgpu::ColorStateDescriptor {
             format: wgpu::TextureFormat::Bgra8Unorm,
-            color: wgpu::BlendDescriptor::REPLACE,
-            alpha: wgpu::BlendDescriptor::REPLACE,
-            write_mask: wgpu::ColorWriteFlags::ALL,
+            color_blend: wgpu::BlendDescriptor::REPLACE,
+            alpha_blend: wgpu::BlendDescriptor::REPLACE,
+            write_mask: wgpu::ColorWrite::ALL,
         }],
         depth_stencil_state: None,
         index_format: wgpu::IndexFormat::Uint32,
         vertex_buffers: &[wgpu::VertexBufferDescriptor {
-            stride: vertex_size as u32,
+            stride: vertex_size as u64,
             step_mode: wgpu::InputStepMode::Vertex,
             attributes: &[
                 wgpu::VertexAttributeDescriptor {
-                    attribute_index: 0,
                     format: wgpu::VertexFormat::Float2,
                     offset: 0,
+                    shader_location: 0,
                 },
                 wgpu::VertexAttributeDescriptor {
-                    attribute_index: 1,
                     format: wgpu::VertexFormat::Float3,
                     offset: 8, // Because this is preceded by two 4-byte floats?
+                    shader_location: 1
                 },
             ],
         }],
@@ -426,7 +350,7 @@ pub fn leggo(styled_geoms: Vec<StyledGeom>, viewport: Box2D<f32>) {
     let mut swap_chain = device.create_swap_chain(
         &surface,
         &wgpu::SwapChainDescriptor {
-            usage: wgpu::TextureUsageFlags::OUTPUT_ATTACHMENT,
+            usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT,
             format: wgpu::TextureFormat::Bgra8Unorm,
             width: (size.width.round() as u32) * 4,
             height: (size.height.round() as u32) * 4,
@@ -461,6 +385,7 @@ pub fn leggo(styled_geoms: Vec<StyledGeom>, viewport: Box2D<f32>) {
             let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
                     attachment: &frame.view,
+                    resolve_target: None,
                     load_op: wgpu::LoadOp::Clear,
                     store_op: wgpu::StoreOp::Store,
                     clear_color: wgpu::Color::WHITE,

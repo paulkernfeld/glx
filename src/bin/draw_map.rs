@@ -239,7 +239,7 @@ mod tests {
         let best_station: BestStation = best_station(&stations, Point2D::new(0.0, 0.0));
 
         assert_eq!(
-            best_station.station_name, "Gilman",
+            best_station.station.name, "Gilman",
             "Gilman is closest to city hall"
         );
 
