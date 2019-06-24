@@ -81,6 +81,7 @@ pub enum Geom {
         width: f32,
     },
     Polygon(Vec<Point2D<f32>>), // don't repeat the first point
+//    Text(String), // This seems def. not a geom in the tidy data sense
 }
 
 pub enum PointStyle {
@@ -212,6 +213,8 @@ fn create_vertices(
 }
 
 use log::info;
+use wgpu_glyph::{GlyphBrushBuilder, Section, Scale};
+use self::wgpu::TextureFormat;
 
 #[allow(dead_code)]
 pub fn cast_slice<T>(data: &[T]) -> &[u8] {
@@ -357,6 +360,11 @@ pub fn leggo(styled_geoms: Vec<StyledGeom>, viewport: Box2D<f32>) {
         },
     );
 
+    // Prepare glyph_brush
+    let inconsolata: &[u8] = include_bytes!("font/Inconsolata-Regular.ttf");
+    let mut glyph_brush = GlyphBrushBuilder::using_font_bytes(inconsolata)
+        .build(&mut device, TextureFormat::Bgra8Unorm);
+
     events_loop.run_forever(|event| {
         match event {
             Event::WindowEvent { event, .. } => match event {
@@ -398,6 +406,33 @@ pub fn leggo(styled_geoms: Vec<StyledGeom>, viewport: Box2D<f32>) {
             rpass.set_vertex_buffers(&[(&vertex_buf, 0)]);
             rpass.draw_indexed(0..(index_data.len() as u32), 0, 0..1);
         }
+
+        glyph_brush.queue(Section {
+            text: "Hello wgpu_glyph!",
+            screen_position: (30.0, 30.0),
+            color: [0.0, 0.0, 0.0, 1.0],
+            scale: Scale { x: 40.0, y: 40.0 },
+            bounds: (size.width as f32, size.height as f32),
+            ..Section::default()
+        });
+
+        glyph_brush.queue(Section {
+            text: "Hello wgpu_glyph!",
+            screen_position: (30.0, 90.0),
+            color: [1.0, 1.0, 1.0, 1.0],
+            scale: Scale { x: 40.0, y: 40.0 },
+            bounds: (size.width as f32, size.height as f32),
+            ..Section::default()
+        });
+
+        // Draw the text!
+        glyph_brush.draw_queued(
+            &mut device,
+            &mut encoder,
+            &frame.view,
+            size.width.round() as u32,
+            size.height.round() as u32,
+        ).unwrap();
 
         device.get_queue().submit(&[encoder.finish()]);
 
