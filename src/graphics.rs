@@ -2,7 +2,7 @@ use log::*;
 extern crate env_logger;
 extern crate wgpu;
 
-use euclid::{Box2D, Point2D};
+use euclid::{Point2D, TypedPoint2D};
 use lyon::tessellation::*;
 
 use crate::graphics;
@@ -55,6 +55,12 @@ pub fn scale_chroma(mut scalar: f32, n_chunks: f32) -> [f32; 3] {
         }
 }
 
+/// This unit refers to "data space," i.e. the most raw version of the coordinates
+pub enum DataUnit {}
+
+pub type Point2DData = TypedPoint2D<f32, DataUnit>;
+pub type Box2DData = TypedBox2D<f32, DataUnit>;
+
 #[derive(Clone, Copy, Debug)]
 #[repr(C)]
 pub struct Vertex {
@@ -92,7 +98,7 @@ impl Render for StyledGeom {
 #[derive(Clone, Debug)]
 pub struct Text {
     pub text: String,
-    pub location: Point2D<f32>,
+    pub location: Point2DData,
 }
 
 impl Render for Text {
@@ -118,12 +124,12 @@ impl<R: Render> Render for Vec<R> {
 /// This attempts to represent the underlying data
 #[derive(Clone, Debug)]
 pub enum Geom {
-    Point(Point2D<f32>),
+    Point(Point2DData),
     Lines {
-        points: Vec<Point2D<f32>>,
+        points: Vec<Point2DData>,
         width: f32,
     },
-    Polygon(Vec<Point2D<f32>>), // don't repeat the first point
+    Polygon(Vec<Point2DData>), // don't repeat the first point
 //    Text(String), // This seems def. not a geom in the tidy data sense
 }
 
@@ -133,8 +139,8 @@ pub enum PointStyle {
 
 /// Transform this point from data space into drawing space coordinates
 fn transform_viewport(
-    point: &Point2D<f32>,
-    viewport: &Box2D<f32>,
+    point: &Point2DData,
+    viewport: &Box2DData,
     aspect_ratio: f32,
 ) -> Point2D<f32> {
     Point2D::new(
@@ -143,7 +149,7 @@ fn transform_viewport(
     )
 }
 
-fn transform_viewport_1d(len: f32, viewport: &Box2D<f32>) -> f32 {
+fn transform_viewport_1d(len: f32, viewport: &Box2DData) -> f32 {
     2.0 * len / (viewport.max.y - viewport.min.y)
 }
 
@@ -155,7 +161,7 @@ fn transform_viewport_1d(len: f32, viewport: &Box2D<f32>) -> f32 {
 // 3. Screen coordinates, i.e. pixels
 //    hardcoded basically divide by screen resoltion
 // 4. wgpu -1 to 1 coordinates?
-fn geom_to_path(geom: Geom, viewport: Box2D<f32>, screen: Vector2D<usize>) -> MyPath {
+fn geom_to_path(geom: Geom, viewport: Box2DData, screen: Vector2D<usize>) -> MyPath {
     let mut builder = Path::builder();
 
     //    let original_to_drawing = |x| x * screen;
@@ -202,7 +208,7 @@ fn geom_to_path(geom: Geom, viewport: Box2D<f32>, screen: Vector2D<usize>) -> My
 fn create_vertices(
     styled_geoms: Vec<StyledGeom>,
     screen: Vector2D<usize>,
-    viewport: Box2D<f32>,
+    viewport: Box2DData,
 ) -> (Vec<Vertex>, Vec<u32>) {
     // Will contain the result of the tessellation.
     let mut geometry: VertexBuffers<Vertex, u32> = VertexBuffers::new();
@@ -285,7 +291,7 @@ pub trait Example {
     fn render(&mut self, frame: &wgpu::SwapChainOutput, device: &mut wgpu::Device);
 }
 
-pub fn leggo<R: Render>(render: R, viewport: Box2D<f32>) {
+pub fn leggo<R: Render>(render: R, viewport: Box2DData) {
     debug!("Initializing WGPU...");
     let instance = wgpu::Instance::new();
 

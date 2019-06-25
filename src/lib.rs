@@ -3,14 +3,14 @@
 //extern crate alloc_system;
 
 use crate::protos::DenseNode;
-use euclid;
-use euclid::Point2D;
 use geo::algorithm::bearing::Bearing;
 use geo::haversine_distance::HaversineDistance;
 use geo_types::Point;
 
 pub mod graphics;
 pub mod protos;
+
+use graphics::Point2DData;
 
 #[derive(Clone, Copy, Debug)]
 pub struct MyNode {
@@ -19,8 +19,8 @@ pub struct MyNode {
 }
 
 impl MyNode {
-    pub fn to_point2d(&self) -> Point2D<f32> {
-        Point2D::new(self.x_y_meters[0] as f32, self.x_y_meters[1] as f32)
+    pub fn to_point2d(&self) -> Point2DData {
+        Point2DData::new(self.x_y_meters[0] as f32, self.x_y_meters[1] as f32)
     }
 }
 
@@ -53,16 +53,16 @@ impl rstar::Point for MyNode {
 const DEG_TO_RAD: f32 = 2.0 * std::f32::consts::PI / 360.0;
 
 // Not really sure why this weird flipping produces the correct result but it does (?)
-pub fn lon_lat_to_x_y(centroid: &Point<f32>, lon_lat: (f32, f32)) -> Point2D<f32> {
+pub fn lon_lat_to_x_y(centroid: &Point<f32>, lon_lat: (f32, f32)) -> Point2DData {
     let distance_from_location = centroid.haversine_distance(&Point::from(lon_lat));
     let bearing_from_location = centroid.bearing(Point::from(lon_lat)) * DEG_TO_RAD;
-    Point2D::new(
+    Point2DData::new(
         distance_from_location * bearing_from_location.sin(),
         -distance_from_location * bearing_from_location.cos(),
     )
 }
 
-pub fn dense_node_to_x_y(node: &DenseNode, centroid: Point<f32>) -> Point2D<f32> {
+pub fn dense_node_to_x_y(node: &DenseNode, centroid: Point<f32>) -> Point2DData {
     let lat = node.lat as f32 / 10000000.0;
     let lon = node.lon as f32 / 10000000.0;
     lon_lat_to_x_y(&centroid, (lon, lat))

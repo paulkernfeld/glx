@@ -12,22 +12,22 @@ fn main() {
     graphics::leggo(
         vec![
             StyledGeom {
-                geom: Geom::Point(Point2D::new(-0.5, -0.5)),
+                geom: Geom::Point(Point2DData::new(-0.5, -0.5)),
                 color: [1.0, 1.0, 0.0],
             },
             StyledGeom {
-                geom: Geom::Point(Point2D::new(0.5, -0.5)),
+                geom: Geom::Point(Point2DData::new(0.5, -0.5)),
                 color: [1.0, 0.0, 1.0],
             },
             StyledGeom {
-                geom: Geom::Point(Point2D::new(0.5, 0.5)),
+                geom: Geom::Point(Point2DData::new(0.5, 0.5)),
                 color: [0.0, 1.0, 1.0],
             },
             StyledGeom {
-                geom: Geom::Point(Point2D::new(-0.5, 0.5)),
+                geom: Geom::Point(Point2DData::new(-0.5, 0.5)),
                 color: [0.5, 0.5, 0.5],
             },
         ],
-        Box2D::new(Point2D::new(-1.0, -1.0), Point2D::new(1.0, 1.0)),
+        Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(1.0, 1.0)),
     );
 }

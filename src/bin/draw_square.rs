@@ -3,7 +3,6 @@ extern crate env_logger;
 use glx::graphics;
 use glx::graphics::*;
 
-use euclid::*;
 use log::*;
 
 fn main() {
@@ -13,13 +12,13 @@ fn main() {
     graphics::leggo(
         vec![StyledGeom {
             geom: Geom::Polygon(vec![
-                Point2D::new(0.25, 0.25),
-                Point2D::new(0.75, 0.25),
-                Point2D::new(0.75, 0.75),
-                Point2D::new(0.25, 0.75),
+                Point2DData::new(0.25, 0.25),
+                Point2DData::new(0.75, 0.25),
+                Point2DData::new(0.75, 0.75),
+                Point2DData::new(0.25, 0.75),
             ]),
             color: [0.9, 0.1, 0.5],
         }],
-        Box2D::new(Point2D::new(0.0, 0.0), Point2D::new(1.0, 1.0)),
+        Box2DData::new(Point2DData::new(0.0, 0.0), Point2DData::new(1.0, 1.0)),
     );
 }

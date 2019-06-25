@@ -2,7 +2,7 @@ extern crate env_logger;
 extern crate wgpu;
 
 use euclid;
-use euclid::{Box2D, Point2D};
+use euclid::{TypedBox2D};
 use log::*;
 use std::collections::HashMap;
 
@@ -27,7 +27,7 @@ enum MbtaLine {
 struct Station {
     name: String,
     minutes_to_ps_dtx: f32,
-    location_x_y: Point2D<f32>,
+    location_x_y: Point2DData,
     glx: bool,
     line: MbtaLine,
 }
@@ -63,7 +63,7 @@ struct BestStation {
     time: f32,
 }
 
-fn best_station(stations: &[Station], location_x_y: Point2D<f32>) -> BestStation {
+fn best_station(stations: &[Station], location_x_y: Point2DData) -> BestStation {
     let station_time = |station: &Station| {
         let distance_walking = (location_x_y - station.location_x_y).length();
         // Average walking speed is about 5 kph: https://en.wikipedia.org/wiki/Walking
@@ -85,7 +85,7 @@ fn best_station(stations: &[Station], location_x_y: Point2D<f32>) -> BestStation
     }
 }
 
-fn make_styled_geoms(bb: Box2D<f32>) -> Vec<StyledGeom> {
+fn make_styled_geoms(bb: TypedBox2D<f32, DataUnit>) -> Vec<StyledGeom> {
     // Somerville city hall (93 Highland)
     let centroid: geo_types::Point<f32> = geo_types::Point::new(-71.098472, 42.386755);
 
@@ -229,22 +229,22 @@ mod tests {
             station.location_x_y.to_vector().length() > 100.0,
             "Gilman is not THAT close to city hall"
         );
-        assert_eq!(station.minutes_to_ps_dtx, 22.0);
+        assert_eq!(station.minutes_to_ps_dtx, 19.0);
     }
 
     #[test]
     fn test_best_station() {
         let stations = load_stations(geo_types::Point::new(-71.098472, 42.386755));
 
-        let best_station: BestStation = best_station(&stations, Point2D::new(0.0, 0.0));
+        let best_station: BestStation = best_station(&stations, Point2DData::new(0.0, 0.0));
 
         assert_eq!(
             best_station.station.name, "Gilman",
             "Gilman is closest to city hall"
         );
 
-        assert!(best_station.time > 23.0);
-        assert!(best_station.time < 30.0);
+        assert!(best_station.time > 20.0);
+        assert!(best_station.time < 25.0);
     }
 }
 
@@ -253,7 +253,7 @@ fn main() {
 
     info!("Entering script...");
 
-    let viewport = Box2D::new(Point2D::new(-2000.0, -2000.0), Point2D::new(2000.0, 2000.0));
+    let viewport = Box2DData::new(Point2DData::new(-2000.0, -2000.0), Point2DData::new(2000.0, 2000.0));
 
     graphics::leggo(make_styled_geoms(viewport), viewport);
 }

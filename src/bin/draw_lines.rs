@@ -2,8 +2,6 @@ extern crate env_logger;
 
 use glx::graphics::*;
 
-use euclid::*;
-
 fn main() {
     // This should show a filled circle that fades angularly along the palette gradient
     // This seems to be able to handle 100,000 lines but not 1,000,000
@@ -16,8 +14,8 @@ fn main() {
                 StyledGeom {
                     geom: Geom::Lines {
                         points: vec![
-                            Point2D::new(0.0, 0.0),
-                            Point2D::new(angle.cos(), angle.sin()),
+                            Point2DData::new(0.0, 0.0),
+                            Point2DData::new(angle.cos(), angle.sin()),
                         ],
                         width: 0.002,
                     },
@@ -25,6 +23,6 @@ fn main() {
                 }
             })
             .collect::<Vec<_>>(),
-        Box2D::new(Point2D::new(-1.0, -1.0), Point2D::new(1.0, 1.0)),
+        Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(1.0, 1.0)),
     );
 }
