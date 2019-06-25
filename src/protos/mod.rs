@@ -1,7 +1,8 @@
 //! ```
 //! use glx::protos::read_blobs;
+//! use std::io::Cursor;
 //!
-//! assert!(read_blobs(include_bytes!("../pbf/massachusetts-latest.osm.pbf").unwrap()).next().is_some());
+//! assert!(read_blobs(Cursor::new(&include_bytes!("../../pbf/massachusetts-latest.osm.pbf"))).next().is_some());
 //! ```
 //! https://wiki.openstreetmap.org/wiki/PBF_Format
 //! Protobuf lives here: https://github.com/scrosby/OSM-binary
