@@ -52,10 +52,11 @@ impl rstar::Point for MyNode {
 
 const DEG_TO_RAD: f32 = 2.0 * std::f32::consts::PI / 360.0;
 
-// Not really sure why this weird flipping produces the correct result but it does (?)
-pub fn lon_lat_to_x_y(centroid: &Point<f32>, lon_lat: (f32, f32)) -> Point2DData {
-    let distance_from_location = centroid.haversine_distance(&Point::from(lon_lat));
-    let bearing_from_location = centroid.bearing(Point::from(lon_lat)) * DEG_TO_RAD;
+pub fn lat_lon_to_x_y(centroid: &Point<f32>, lat_lon: (f32, f32)) -> Point2DData {
+    // The geo library takes (lon, lat) since it's like (x, y); x is lon, y is lat
+    let centroid_lon_lat = Point::new(centroid.y(), centroid.x());
+    let distance_from_location = centroid_lon_lat.haversine_distance(&Point::new(lat_lon.1, lat_lon.0));
+    let bearing_from_location = centroid_lon_lat.bearing(Point::new(lat_lon.1, lat_lon.0)) * DEG_TO_RAD;
     Point2DData::new(
         distance_from_location * bearing_from_location.sin(),
         -distance_from_location * bearing_from_location.cos(),
@@ -65,7 +66,7 @@ pub fn lon_lat_to_x_y(centroid: &Point<f32>, lon_lat: (f32, f32)) -> Point2DData
 pub fn dense_node_to_x_y(node: &DenseNode, centroid: Point<f32>) -> Point2DData {
     let lat = node.lat as f32 / 10000000.0;
     let lon = node.lon as f32 / 10000000.0;
-    lon_lat_to_x_y(&centroid, (lon, lat))
+    lat_lon_to_x_y(&centroid, (lat, lon))
 }
 
 #[cfg(test)]

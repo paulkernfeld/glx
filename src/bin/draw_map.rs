@@ -48,7 +48,7 @@ fn load_stations(centroid: Point<f32>) -> Vec<Station> {
             };
             Station {
                 name: row[0].to_string(),
-                location_x_y: lon_lat_to_x_y(&centroid, (lon, lat)),
+                location_x_y: lat_lon_to_x_y(&centroid, (lat, lon)),
                 minutes_to_ps_dtx: row[5].parse().unwrap(),
                 glx,
                 line,
@@ -87,7 +87,7 @@ fn best_station(stations: &[Station], location_x_y: Point2DData) -> BestStation 
 
 fn make_styled_geoms(bb: TypedBox2D<f32, DataUnit>) -> Vec<StyledGeom> {
     // Somerville city hall (93 Highland)
-    let centroid: geo_types::Point<f32> = geo_types::Point::new(-71.098472, 42.386755);
+    let centroid: geo_types::Point<f32> = geo_types::Point::new(42.386755, -71.098472);
 
     let stations: Vec<Station> = load_stations(centroid);
     let stations_before: Vec<Station> = stations.clone().into_iter().filter(|station| !station.glx).collect();
@@ -214,7 +214,7 @@ mod tests {
 
     #[test]
     fn test_load_stations() {
-        let stations = load_stations(geo_types::Point::new(-71.098472, 42.386755));
+        let stations = load_stations(geo_types::Point::new(42.386755, -71.098472));
 
         let station: &Station = stations
             .iter()
@@ -234,7 +234,7 @@ mod tests {
 
     #[test]
     fn test_best_station() {
-        let stations = load_stations(geo_types::Point::new(-71.098472, 42.386755));
+        let stations = load_stations(geo_types::Point::new(42.386755, -71.098472));
 
         let best_station: BestStation = best_station(&stations, Point2DData::new(0.0, 0.0));
 
