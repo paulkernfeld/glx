@@ -24,7 +24,7 @@ fn main() {
                     color: scale_temperature(ratio, 16.0),
                 }
             })
-            .collect(),
+            .collect::<Vec<_>>(),
         Box2D::new(Point2D::new(-1.0, -1.0), Point2D::new(1.0, 1.0)),
     );
 }

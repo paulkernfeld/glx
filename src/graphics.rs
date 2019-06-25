@@ -42,7 +42,6 @@ pub fn scale_chroma(mut scalar: f32, n_chunks: f32) -> [f32; 3] {
     // Quantize the colors
     scalar = (scalar * n_chunks).floor() / (n_chunks - 1.0);
     let lightness = 70.0;
-    let chroma = 90.0;
     match Srgb::from(
         Gradient::new(vec![
             Lch::new(lightness, 0.0, 60.0),
@@ -68,11 +67,55 @@ enum MyPath {
     Stroked { path: Path, width: f32 },
 }
 
+pub trait Render {
+    fn styled_geoms(&self) -> Vec<StyledGeom>;
+
+    fn texts(&self) -> Vec<Text>;
+}
+
+#[derive(Clone, Debug)]
 pub struct StyledGeom {
     pub geom: Geom,
     pub color: [f32; 3],
 }
 
+impl Render for StyledGeom {
+    fn styled_geoms(&self) -> Vec<StyledGeom> {
+        vec![self.clone()]
+    }
+
+    fn texts(&self) -> Vec<Text> {
+        vec![]
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct Text {
+    pub text: String,
+    pub location: Point2D<f32>,
+}
+
+impl Render for Text {
+    fn styled_geoms(&self) -> Vec<StyledGeom> {
+        vec![]
+    }
+
+    fn texts(&self) -> Vec<Text> {
+        vec![self.clone()]
+    }
+}
+
+impl<R: Render> Render for Vec<R> {
+    fn styled_geoms(&self) -> Vec<StyledGeom> {
+        self.iter().flat_map(|r| r.styled_geoms()).collect()
+    }
+
+    fn texts(&self) -> Vec<Text> {
+        self.iter().flat_map(|r| r.texts()).collect()
+    }
+}
+
+/// This attempts to represent the underlying data
 #[derive(Clone, Debug)]
 pub enum Geom {
     Point(Point2D<f32>),
@@ -88,6 +131,7 @@ pub enum PointStyle {
     Circle { radius: f32 },
 }
 
+/// Transform this point from data space into drawing space coordinates
 fn transform_viewport(
     point: &Point2D<f32>,
     viewport: &Box2D<f32>,
@@ -104,7 +148,7 @@ fn transform_viewport_1d(len: f32, viewport: &Box2D<f32>) -> f32 {
 }
 
 // Stages:
-// 1. True space coordinates, i.e. locations on the Somerville map
+// 1. Data space coordinates, i.e. locations on the Somerville map
 //     viewport transform
 // 2. Drawing space coordinates
 //     screen transform
@@ -241,7 +285,7 @@ pub trait Example {
     fn render(&mut self, frame: &wgpu::SwapChainOutput, device: &mut wgpu::Device);
 }
 
-pub fn leggo(styled_geoms: Vec<StyledGeom>, viewport: Box2D<f32>) {
+pub fn leggo<R: Render>(render: R, viewport: Box2D<f32>) {
     debug!("Initializing WGPU...");
     let instance = wgpu::Instance::new();
 
@@ -270,8 +314,10 @@ pub fn leggo(styled_geoms: Vec<StyledGeom>, viewport: Box2D<f32>) {
     // - from intended real world dimension + DPI
     let screen = Vector2D::new(2880, 1800);
 
-    let (vertex_data, index_data) = create_vertices(styled_geoms, screen, viewport);
-    assert!(!vertex_data.is_empty());
+    let aspect_ratio = screen.x as f32 / screen.y as f32;
+
+    let (vertex_data, index_data) = create_vertices(render.styled_geoms(), screen, viewport);
+    debug!("{} {}", vertex_data.len(), index_data.len());
 
     let vertex_buf = device
         .create_buffer_mapped(vertex_data.len(), wgpu::BufferUsage::VERTEX)
@@ -407,25 +453,18 @@ pub fn leggo(styled_geoms: Vec<StyledGeom>, viewport: Box2D<f32>) {
             rpass.draw_indexed(0..(index_data.len() as u32), 0, 0..1);
         }
 
-        glyph_brush.queue(Section {
-            text: "Hello wgpu_glyph!",
-            screen_position: (30.0, 30.0),
-            color: [0.0, 0.0, 0.0, 1.0],
-            scale: Scale { x: 40.0, y: 40.0 },
-            bounds: (size.width as f32, size.height as f32),
-            ..Section::default()
-        });
+        for text in render.texts() {
+            glyph_brush.queue(Section {
+                text: &text.text,
+                screen_position: transform_viewport(&text.location, &viewport, aspect_ratio).to_tuple(),
+                color: [0.0, 0.0, 0.0, 1.0],
+                scale: Scale { x: 40.0, y: 40.0 },
+                bounds: (size.width as f32, size.height as f32),
+                ..Section::default()
+            });
+        }
 
-        glyph_brush.queue(Section {
-            text: "Hello wgpu_glyph!",
-            screen_position: (30.0, 90.0),
-            color: [1.0, 1.0, 1.0, 1.0],
-            scale: Scale { x: 40.0, y: 40.0 },
-            bounds: (size.width as f32, size.height as f32),
-            ..Section::default()
-        });
-
-        // Draw the text!
+        // Draw queued texts
         glyph_brush.draw_queued(
             &mut device,
             &mut encoder,

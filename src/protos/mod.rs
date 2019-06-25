@@ -152,8 +152,8 @@ pub fn read_blobs<R: Read + 'static>(mut read: R) -> impl Iterator<Item = BlobDa
     std::iter::from_fn(move || read.read_osm_pbf_blob())
 }
 
-pub fn write_blobs<I: Iterator<Item = BlobData>, W: Write + 'static>(blobs: I, mut write: W) {
-    for blob in blobs {
+pub fn write_blobs<I: Iterator<Item = BlobData>, W: Write + 'static>(blobs: I, _write: W) {
+    for _blob in blobs {
         unimplemented!()
     }
 }
