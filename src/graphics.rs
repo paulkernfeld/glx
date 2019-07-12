@@ -79,6 +79,27 @@ pub trait Render {
     fn texts(&self) -> Vec<Text>;
 }
 
+/// Cells are implicitly based around the origin
+pub struct FnGrid {
+    bounds: Box2DData,
+
+    /// The side length of a cell, in data space
+    cell_size: f32,
+
+    /// Given the center of a grid cell, return the color to paint this grid cell
+    function: Fn(Point2DData) -> [f32; 3],
+}
+
+impl Render for FnGrid {
+    fn styled_geoms(&self) -> Vec<StyledGeom> {
+        unimplemented!()
+    }
+
+    fn texts(&self) -> Vec<Text> {
+        vec![]
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct StyledGeom {
     pub geom: Geom,
