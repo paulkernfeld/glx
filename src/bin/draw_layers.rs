@@ -7,8 +7,13 @@ use euclid::*;
 use log::*;
 
 fn main() {
-    // This should render a square that's half the height of the screen, right in the middle of the
-    // screen.
+    let viewport = Box2DData::new(Point2DData::new(-2.0, -2.0), Point2DData::new(2.0, 2.0));
+    let fn_grid = FnGrid {
+        viewport,
+        cell_size: 0.95,
+        function: |point: Point2DData| [0.0, (point.x + 2.0) / 4.0, (point.y + 2.0) / 4.0, 1.0],
+    };
+
     graphics::leggo(
         vec![
             StyledGeom {

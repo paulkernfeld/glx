@@ -18,7 +18,7 @@ use palette::{Gradient, Lch, Srgb};
 /// values.
 ///
 /// This scale has high distinguishability.
-pub fn scale_temperature(mut scalar: f32, n_chunks: f32) -> [f32; 3] {
+pub fn scale_temperature(mut scalar: f32, n_chunks: f32) -> [f32; 4] {
     scalar = (scalar * n_chunks).floor() / (n_chunks - 1.0);
     let lightness = 70.0;
     let chroma = 90.0;
@@ -31,7 +31,7 @@ pub fn scale_temperature(mut scalar: f32, n_chunks: f32) -> [f32; 3] {
     )
     .into_components()
     {
-        (r, g, b) => [r, g, b],
+        (r, g, b) => [r, g, b, 1.0],
     }
 }
 
@@ -39,7 +39,7 @@ pub fn scale_temperature(mut scalar: f32, n_chunks: f32) -> [f32; 3] {
 /// higher values.
 ///
 /// This color scale has medium distinguishability.
-pub fn scale_chroma(mut scalar: f32, n_chunks: f32) -> [f32; 3] {
+pub fn scale_chroma(mut scalar: f32, n_chunks: f32) -> [f32; 4] {
     // Quantize the colors
     scalar = (scalar * n_chunks).floor() / (n_chunks - 1.0);
     let lightness = 70.0;
@@ -52,7 +52,7 @@ pub fn scale_chroma(mut scalar: f32, n_chunks: f32) -> [f32; 3] {
     )
     .into_components()
     {
-        (r, g, b) => [r, g, b],
+        (r, g, b) => [r, g, b, 1.0],
     }
 }
 
@@ -66,7 +66,7 @@ pub type Box2DData = TypedBox2D<f32, DataUnit>;
 #[repr(C)]
 pub struct Vertex {
     _pos: [f32; 2],
-    _color: [f32; 3],
+    _color: [f32; 4],
 }
 
 enum MyPath {
@@ -107,7 +107,7 @@ pub struct FnGrid<F> {
     pub function: F,
 }
 
-impl<F: Fn(Point2DData) -> [f32; 3]> Render for FnGrid<F> {
+impl<F: Fn(Point2DData) -> [f32; 4]> Render for FnGrid<F> {
     fn styled_geoms(&self) -> Vec<StyledGeom> {
         let min_x = (self.viewport.min.x / self.cell_size).floor() as isize;
         let min_y = (self.viewport.min.y / self.cell_size).floor() as isize;
@@ -144,7 +144,7 @@ impl<F: Fn(Point2DData) -> [f32; 3]> Render for FnGrid<F> {
 #[derive(Clone, Debug)]
 pub struct StyledGeom {
     pub geom: Geom,
-    pub color: [f32; 3],
+    pub color: [f32; 4],
 }
 
 impl Render for StyledGeom {
@@ -203,7 +203,6 @@ pub enum PointStyle {
 fn transform_viewport(
     point: &Point2DData,
     viewport: &Box2DData,
-    aspect_ratio: f32,
 ) -> Point2D<f32> {
     Point2D::new(
         2.0 * (point.x - viewport.min.x) / (viewport.max.x - viewport.min.x) - 1.0,
@@ -226,14 +225,11 @@ fn transform_viewport_1d(len: f32, viewport: &Box2DData) -> f32 {
 fn geom_to_path(geom: Geom, viewport: Box2DData, screen: Vector2D<usize>) -> MyPath {
     let mut builder = Path::builder();
 
-    //    let original_to_drawing = |x| x * screen;
-    let aspect_ratio = screen.x as f32 / screen.y as f32;
-
     match geom {
         Geom::Point(point) => {
             // 3px diameter is good
             let radius_px = 10.0;
-            let point = transform_viewport(&point, &viewport, aspect_ratio);
+            let point = transform_viewport(&point, &viewport);
             builder.move_to(point + Vector2D::new(radius_px / screen.x as f32, 0.0));
             builder.arc(
                 point,
@@ -246,9 +242,9 @@ fn geom_to_path(geom: Geom, viewport: Box2DData, screen: Vector2D<usize>) -> MyP
         }
         Geom::Lines { points, width } => {
             debug_assert!(points.len() >= 2);
-            builder.move_to(transform_viewport(&points[0], &viewport, aspect_ratio));
+            builder.move_to(transform_viewport(&points[0], &viewport));
             for point in &points[1..] {
-                builder.line_to(transform_viewport(&point, &viewport, aspect_ratio));
+                builder.line_to(transform_viewport(&point, &viewport));
             }
             MyPath::Stroked {
                 path: builder.build(),
@@ -257,9 +253,9 @@ fn geom_to_path(geom: Geom, viewport: Box2DData, screen: Vector2D<usize>) -> MyP
         }
         Geom::Polygon(points) => {
             debug_assert!(points.len() >= 3);
-            builder.move_to(transform_viewport(&points[0], &viewport, aspect_ratio));
+            builder.move_to(transform_viewport(&points[0], &viewport));
             for point in &points[1..] {
-                builder.line_to(transform_viewport(&point, &viewport, aspect_ratio));
+                builder.line_to(transform_viewport(&point, &viewport));
             }
             builder.close();
             MyPath::Filled(builder.build())
@@ -388,8 +384,6 @@ pub fn leggo<R: Render>(render: R, viewport: Box2DData) {
     // - from intended real world dimension + DPI
     let screen = Vector2D::new(2880, 1800);
 
-    let aspect_ratio = screen.x as f32 / screen.y as f32;
-
     let (vertex_data, index_data) = create_vertices(render.styled_geoms(), screen, viewport);
     debug!("{} {}", vertex_data.len(), index_data.len());
 
@@ -431,7 +425,11 @@ pub fn leggo<R: Render>(render: R, viewport: Box2DData) {
         primitive_topology: wgpu::PrimitiveTopology::TriangleList,
         color_states: &[wgpu::ColorStateDescriptor {
             format: wgpu::TextureFormat::Bgra8Unorm,
-            color_blend: wgpu::BlendDescriptor::REPLACE,
+            color_blend: wgpu::BlendDescriptor {
+                src_factor: wgpu::BlendFactor::SrcAlpha,
+                dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+                operation: wgpu::BlendOperation::Add,
+            },
             alpha_blend: wgpu::BlendDescriptor::REPLACE,
             write_mask: wgpu::ColorWrite::ALL,
         }],
@@ -447,7 +445,7 @@ pub fn leggo<R: Render>(render: R, viewport: Box2DData) {
                     shader_location: 0,
                 },
                 wgpu::VertexAttributeDescriptor {
-                    format: wgpu::VertexFormat::Float3,
+                    format: wgpu::VertexFormat::Float4,
                     offset: 8, // Because this is preceded by two 4-byte floats?
                     shader_location: 1,
                 },
@@ -530,7 +528,7 @@ pub fn leggo<R: Render>(render: R, viewport: Box2DData) {
         for text in render.texts() {
             glyph_brush.queue(Section {
                 text: &text.text,
-                screen_position: transform_viewport(&text.location, &viewport, aspect_ratio)
+                screen_position: transform_viewport(&text.location, &viewport)
                     .to_tuple(),
                 color: [0.0, 0.0, 0.0, 1.0],
                 scale: Scale { x: 40.0, y: 40.0 },

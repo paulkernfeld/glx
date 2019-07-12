@@ -2,8 +2,6 @@ extern crate env_logger;
 extern crate wgpu;
 
 use either::Either;
-use euclid;
-use euclid::TypedBox2D;
 use log::*;
 use std::collections::HashMap;
 
@@ -158,9 +156,7 @@ fn make_render(viewport: Box2DData) -> impl Render {
                 .map(|node| dense_node_to_x_y(&node, centroid))
                 .collect();
             if way.tags.contains_key("building") {
-                let best_before = best_station(&stations_before, nodes[0]);
-                let best_after = best_station(&stations, nodes[0]);
-                let color = [0.5, 0.5, 0.5];
+                let color = [0.7, 0.7, 0.7, 0.7];
                 Some(StyledGeom {
                     geom: Geom::Polygon(nodes),
                     color,
@@ -197,7 +193,7 @@ fn make_render(viewport: Box2DData) -> impl Render {
                         points: nodes,
                         width,
                     },
-                    color: [0.7, 0.7, 0.7],
+                    color: [0.7, 0.7, 0.7, 0.7],
                 })
             } else {
                 Some(StyledGeom {
@@ -205,7 +201,7 @@ fn make_render(viewport: Box2DData) -> impl Render {
                         points: nodes,
                         width: 3.0,
                     },
-                    color: [0.9, 0.9, 0.9],
+                    color: [0.7, 0.7, 0.7, 0.3],
                 })
             }
         })
@@ -222,9 +218,9 @@ fn make_render(viewport: Box2DData) -> impl Render {
                 //                let best_before = best_station(&stations_before, nodes[0]);
                 let best_after = best_station(&stations, point);
                 let color = match best_after.station.line {
-                    MbtaLine::Green => [0.0 / 255.0, 132.0 / 255.0, 58.0 / 255.0],
-                    MbtaLine::Orange => [239.0 / 255.0, 140.0 / 255.0, 0.0 / 255.0],
-                    MbtaLine::Red => [217.0 / 255.0, 37.0 / 255.0, 10.0 / 255.0],
+                    MbtaLine::Green => [0.0 / 255.0, 132.0 / 255.0, 58.0 / 255.0, 1.0],
+                    MbtaLine::Orange => [239.0 / 255.0, 140.0 / 255.0, 0.0 / 255.0, 1.0],
+                    MbtaLine::Red => [217.0 / 255.0, 37.0 / 255.0, 10.0 / 255.0, 1.0],
                 };
                 color
             },
@@ -279,8 +275,8 @@ fn main() {
     info!("Entering script...");
 
     let viewport = Box2DData::new(
-        Point2DData::new(-2000.0, -2000.0),
-        Point2DData::new(2000.0, 2000.0),
+        Point2DData::new(-1000.0, -1000.0),
+        Point2DData::new(1000.0, 1000.0),
     );
 
     graphics::leggo(make_render(viewport), viewport);
