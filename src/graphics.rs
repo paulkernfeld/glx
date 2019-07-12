@@ -80,19 +80,40 @@ pub trait Render {
 }
 
 /// Cells are implicitly based around the origin
-pub struct FnGrid {
-    bounds: Box2DData,
+pub struct FnGrid<F> {
+    pub viewport: Box2DData,
 
     /// The side length of a cell, in data space
-    cell_size: f32,
+    pub cell_size: f32,
 
     /// Given the center of a grid cell, return the color to paint this grid cell
-    function: Fn(Point2DData) -> [f32; 3],
+    pub function: F,
 }
 
-impl Render for FnGrid {
+impl<F: Fn(Point2DData) -> [f32; 3]> Render for FnGrid<F> {
     fn styled_geoms(&self) -> Vec<StyledGeom> {
-        unimplemented!()
+        let min_x = (self.viewport.min.x / self.cell_size).floor() as isize;
+        let min_y = (self.viewport.min.y / self.cell_size).floor() as isize;
+        let max_x = (self.viewport.max.x / self.cell_size).floor() as isize;
+        let max_y = (self.viewport.max.y / self.cell_size).floor() as isize;
+
+        let mut cells = vec![];
+        for x in min_x..=max_x {
+            let cell_x_min = x as f32 * self.cell_size;
+            for y in min_y..=max_y {
+                let cell_y_min = y as f32 * self.cell_size;
+                cells.push(StyledGeom {
+                    geom: Geom::Polygon(vec![
+                        Point2DData::new(cell_x_min, cell_y_min),
+                        Point2DData::new(cell_x_min + self.cell_size, cell_y_min),
+                        Point2DData::new(cell_x_min + self.cell_size, cell_y_min + self.cell_size),
+                        Point2DData::new(cell_x_min, cell_y_min + self.cell_size),
+                    ]),
+                    color: (self.function)(Point2DData::new(cell_x_min + self.cell_size * 0.5, cell_y_min + self.cell_size * 0.5))
+                })
+            }
+        }
+        cells
     }
 
     fn texts(&self) -> Vec<Text> {
