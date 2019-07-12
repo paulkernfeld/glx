@@ -221,7 +221,6 @@ fn create_vertices(
         .with_normals(false)
         .with_tolerance(tolerance);
     let stroke_options = StrokeOptions::DEFAULT
-        .with_line_width(0.002)
         .with_tolerance(tolerance);
 
     for styled_geom in styled_geoms.iter() {
