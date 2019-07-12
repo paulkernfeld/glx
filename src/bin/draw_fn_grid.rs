@@ -9,13 +9,11 @@ fn main() {
     // grid should be slightly falling off the screen.
     let viewport = Box2DData::new(Point2DData::new(-2.0, -2.0), Point2DData::new(2.0, 2.0));
     graphics::leggo(
-        vec![
-            FnGrid {
-                viewport,
-                cell_size: 0.95,
-                function: |point: Point2DData| [0.0, (point.x + 2.0) / 4.0, (point.y + 2.0) / 4.0]
-            }
-        ],
+        vec![FnGrid {
+            viewport,
+            cell_size: 0.95,
+            function: |point: Point2DData| [0.0, (point.x + 2.0) / 4.0, (point.y + 2.0) / 4.0],
+        }],
         viewport,
     );
 }

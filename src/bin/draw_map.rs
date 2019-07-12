@@ -1,8 +1,9 @@
 extern crate env_logger;
 extern crate wgpu;
 
+use either::Either;
 use euclid;
-use euclid::{TypedBox2D};
+use euclid::TypedBox2D;
 use log::*;
 use std::collections::HashMap;
 
@@ -33,28 +34,30 @@ struct Station {
 }
 
 fn load_stations(centroid: Point<f32>) -> Vec<Station> {
-    csv::Reader::from_reader(std::fs::File::open("data/GLX Project MBTA Data - Stations.csv").unwrap())
-        .records()
-        .map(|row| {
-            let row = row.unwrap();
-            let glx = &row[1] == "#N/A";
-            let lat = row[6].parse().unwrap();
-            let lon = row[7].parse().unwrap();
-            let line = match (&row[8], &row[9], &row[10]) {
-                ("1", "0", "0") => MbtaLine::Green,
-                ("0", "1", "0") => MbtaLine::Orange,
-                ("0", "0", "1") => MbtaLine::Red,
-                _ => unimplemented!("Can't handle other lines or combinations yet")
-            };
-            Station {
-                name: row[0].to_string(),
-                location_x_y: lat_lon_to_x_y(&centroid, (lat, lon)),
-                minutes_to_ps_dtx: row[5].parse().unwrap(),
-                glx,
-                line,
-            }
-        })
-        .collect()
+    csv::Reader::from_reader(
+        std::fs::File::open("data/GLX Project MBTA Data - Stations.csv").unwrap(),
+    )
+    .records()
+    .map(|row| {
+        let row = row.unwrap();
+        let glx = &row[1] == "#N/A";
+        let lat = row[6].parse().unwrap();
+        let lon = row[7].parse().unwrap();
+        let line = match (&row[8], &row[9], &row[10]) {
+            ("1", "0", "0") => MbtaLine::Green,
+            ("0", "1", "0") => MbtaLine::Orange,
+            ("0", "0", "1") => MbtaLine::Red,
+            _ => unimplemented!("Can't handle other lines or combinations yet"),
+        };
+        Station {
+            name: row[0].to_string(),
+            location_x_y: lat_lon_to_x_y(&centroid, (lat, lon)),
+            minutes_to_ps_dtx: row[5].parse().unwrap(),
+            glx,
+            line,
+        }
+    })
+    .collect()
 }
 
 #[derive(Clone, Debug)]
@@ -85,12 +88,16 @@ fn best_station(stations: &[Station], location_x_y: Point2DData) -> BestStation 
     }
 }
 
-fn make_styled_geoms(bb: TypedBox2D<f32, DataUnit>) -> Vec<StyledGeom> {
+fn make_render(viewport: Box2DData) -> impl Render {
     // Somerville city hall (93 Highland)
     let centroid: geo_types::Point<f32> = geo_types::Point::new(42.386755, -71.098472);
 
     let stations: Vec<Station> = load_stations(centroid);
-    let stations_before: Vec<Station> = stations.clone().into_iter().filter(|station| !station.glx).collect();
+    let stations_before: Vec<Station> = stations
+        .clone()
+        .into_iter()
+        .filter(|station| !station.glx)
+        .collect();
 
     info!("Loading OSM data...");
     let reader = File::open("pbf/massachusetts-latest.osm.pbf").unwrap();
@@ -128,7 +135,7 @@ fn make_styled_geoms(bb: TypedBox2D<f32, DataUnit>) -> Vec<StyledGeom> {
                     .filter(|way: &MyWay| {
                         get_nodes_vec(way.way.clone())
                             .iter()
-                            .any(|node| bb.contains(&dense_node_to_x_y(&node, centroid)))
+                            .any(|node| viewport.contains(&dense_node_to_x_y(&node, centroid)))
                     })
                     .collect::<Vec<MyWay>>()
             } else {
@@ -143,7 +150,8 @@ fn make_styled_geoms(bb: TypedBox2D<f32, DataUnit>) -> Vec<StyledGeom> {
     info!("{} ways loaded from OSM", ways.len());
 
     // Popular tags: https://taginfo.openstreetmap.org/tags
-    ways.into_par_iter()
+    let osm_styled_geoms: Vec<_> = ways
+        .into_par_iter()
         .filter_map(|way: MyWay| {
             let nodes: Vec<_> = get_nodes_vec(way.way.clone())
                 .into_iter()
@@ -152,32 +160,28 @@ fn make_styled_geoms(bb: TypedBox2D<f32, DataUnit>) -> Vec<StyledGeom> {
             if way.tags.contains_key("building") {
                 let best_before = best_station(&stations_before, nodes[0]);
                 let best_after = best_station(&stations, nodes[0]);
-                let color = match best_after.station.line {
-                    MbtaLine::Green => [0.0 / 255.0, 132.0 / 255.0, 58.0 / 255.0],
-                    MbtaLine::Orange => [239.0 / 255.0, 140.0 / 255.0, 0.0 / 255.0],
-                    MbtaLine::Red => [217.0 / 255.0, 37.0 / 255.0, 10.0 / 255.0],
-                };
+                let color = [0.5, 0.5, 0.5];
                 Some(StyledGeom {
                     geom: Geom::Polygon(nodes),
                     color,
                 })
-                // Showing lines in color is a good idea but requires proper depth
-//            } else if way.way.get_id() == 688009188 {
-//                Some(StyledGeom {
-//                    geom: Geom::Lines {
-//                        points: nodes,
-//                        width: 8.0,
-//                    },
-//                    color: [0.0 / 255.0, 132.0 / 255.0, 58.0 / 255.0],
-//                })
-//            } else if way.way.get_id() == 236626982 {
-//                Some(StyledGeom {
-//                    geom: Geom::Lines {
-//                        points: nodes,
-//                        width: 8.0,
-//                    },
-//                    color: [217.0 / 255.0, 37.0 / 255.0, 10.0 / 255.0],
-//                })
+            // Showing lines in color is a good idea but requires proper depth
+            //            } else if way.way.get_id() == 688009188 {
+            //                Some(StyledGeom {
+            //                    geom: Geom::Lines {
+            //                        points: nodes,
+            //                        width: 8.0,
+            //                    },
+            //                    color: [0.0 / 255.0, 132.0 / 255.0, 58.0 / 255.0],
+            //                })
+            //            } else if way.way.get_id() == 236626982 {
+            //                Some(StyledGeom {
+            //                    geom: Geom::Lines {
+            //                        points: nodes,
+            //                        width: 8.0,
+            //                    },
+            //                    color: [217.0 / 255.0, 37.0 / 255.0, 10.0 / 255.0],
+            //                })
             } else if way.tags.contains_key("highway") {
                 // It seem like this is in feet
                 let meters_per_foot: f32 = 1.0 / 3.0;
@@ -205,7 +209,28 @@ fn make_styled_geoms(bb: TypedBox2D<f32, DataUnit>) -> Vec<StyledGeom> {
                 })
             }
         })
-        .collect()
+        .collect();
+
+    vec![
+        Either::Right(FnGrid {
+            viewport,
+            cell_size: 100.0,
+            function: move |point| {
+                // Using a move closure here is sort of weird. Do we really want to maintain a
+                // dependency on our data all the way through our rendering phases?
+
+                //                let best_before = best_station(&stations_before, nodes[0]);
+                let best_after = best_station(&stations, point);
+                let color = match best_after.station.line {
+                    MbtaLine::Green => [0.0 / 255.0, 132.0 / 255.0, 58.0 / 255.0],
+                    MbtaLine::Orange => [239.0 / 255.0, 140.0 / 255.0, 0.0 / 255.0],
+                    MbtaLine::Red => [217.0 / 255.0, 37.0 / 255.0, 10.0 / 255.0],
+                };
+                color
+            },
+        }),
+        Either::Left(osm_styled_geoms),
+    ]
 }
 
 #[cfg(test)]
@@ -253,7 +278,10 @@ fn main() {
 
     info!("Entering script...");
 
-    let viewport = Box2DData::new(Point2DData::new(-2000.0, -2000.0), Point2DData::new(2000.0, 2000.0));
+    let viewport = Box2DData::new(
+        Point2DData::new(-2000.0, -2000.0),
+        Point2DData::new(2000.0, 2000.0),
+    );
 
-    graphics::leggo(make_styled_geoms(viewport), viewport);
+    graphics::leggo(make_render(viewport), viewport);
 }

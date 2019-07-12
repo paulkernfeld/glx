@@ -55,8 +55,10 @@ const DEG_TO_RAD: f32 = 2.0 * std::f32::consts::PI / 360.0;
 pub fn lat_lon_to_x_y(centroid: &Point<f32>, lat_lon: (f32, f32)) -> Point2DData {
     // The geo library takes (lon, lat) since it's like (x, y); x is lon, y is lat
     let centroid_lon_lat = Point::new(centroid.y(), centroid.x());
-    let distance_from_location = centroid_lon_lat.haversine_distance(&Point::new(lat_lon.1, lat_lon.0));
-    let bearing_from_location = centroid_lon_lat.bearing(Point::new(lat_lon.1, lat_lon.0)) * DEG_TO_RAD;
+    let distance_from_location =
+        centroid_lon_lat.haversine_distance(&Point::new(lat_lon.1, lat_lon.0));
+    let bearing_from_location =
+        centroid_lon_lat.bearing(Point::new(lat_lon.1, lat_lon.0)) * DEG_TO_RAD;
     Point2DData::new(
         distance_from_location * bearing_from_location.sin(),
         -distance_from_location * bearing_from_location.cos(),

@@ -2,6 +2,7 @@ use log::*;
 extern crate env_logger;
 extern crate wgpu;
 
+use either::Either;
 use euclid::{Point2D, TypedPoint2D};
 use lyon::tessellation::*;
 
@@ -47,12 +48,12 @@ pub fn scale_chroma(mut scalar: f32, n_chunks: f32) -> [f32; 3] {
             Lch::new(lightness, 0.0, 60.0),
             Lch::new(lightness, 90.0, 60.0),
         ])
-            .get(scalar),
+        .get(scalar),
     )
-        .into_components()
-        {
-            (r, g, b) => [r, g, b],
-        }
+    .into_components()
+    {
+        (r, g, b) => [r, g, b],
+    }
 }
 
 /// This unit refers to "data space," i.e. the most raw version of the coordinates
@@ -77,6 +78,22 @@ pub trait Render {
     fn styled_geoms(&self) -> Vec<StyledGeom>;
 
     fn texts(&self) -> Vec<Text>;
+}
+
+impl<L: Render, R: Render> Render for Either<L, R> {
+    fn styled_geoms(&self) -> Vec<StyledGeom> {
+        match self {
+            Either::Left(l) => l.styled_geoms(),
+            Either::Right(r) => r.styled_geoms(),
+        }
+    }
+
+    fn texts(&self) -> Vec<Text> {
+        match self {
+            Either::Left(l) => l.texts(),
+            Either::Right(r) => r.texts(),
+        }
+    }
 }
 
 /// Cells are implicitly based around the origin
@@ -109,7 +126,10 @@ impl<F: Fn(Point2DData) -> [f32; 3]> Render for FnGrid<F> {
                         Point2DData::new(cell_x_min + self.cell_size, cell_y_min + self.cell_size),
                         Point2DData::new(cell_x_min, cell_y_min + self.cell_size),
                     ]),
-                    color: (self.function)(Point2DData::new(cell_x_min + self.cell_size * 0.5, cell_y_min + self.cell_size * 0.5))
+                    color: (self.function)(Point2DData::new(
+                        cell_x_min + self.cell_size * 0.5,
+                        cell_y_min + self.cell_size * 0.5,
+                    )),
                 })
             }
         }
@@ -172,7 +192,7 @@ pub enum Geom {
         width: f32,
     },
     Polygon(Vec<Point2DData>), // don't repeat the first point
-//    Text(String), // This seems def. not a geom in the tidy data sense
+                               //    Text(String), // This seems def. not a geom in the tidy data sense
 }
 
 pub enum PointStyle {
@@ -262,8 +282,7 @@ fn create_vertices(
     let fill_options = FillOptions::DEFAULT
         .with_normals(false)
         .with_tolerance(tolerance);
-    let stroke_options = StrokeOptions::DEFAULT
-        .with_tolerance(tolerance);
+    let stroke_options = StrokeOptions::DEFAULT.with_tolerance(tolerance);
 
     for styled_geom in styled_geoms.iter() {
         match geom_to_path(styled_geom.geom.clone(), viewport, screen) {
@@ -303,9 +322,9 @@ fn create_vertices(
     (geometry.vertices, geometry.indices)
 }
 
-use log::info;
-use wgpu_glyph::{GlyphBrushBuilder, Section, Scale};
 use self::wgpu::TextureFormat;
+use log::info;
+use wgpu_glyph::{GlyphBrushBuilder, Scale, Section};
 
 #[allow(dead_code)]
 pub fn cast_slice<T>(data: &[T]) -> &[u8] {
@@ -348,8 +367,16 @@ pub fn leggo<R: Render>(render: R, viewport: Box2DData) {
     });
 
     debug!("building shaders...");
-    let vs_bytes = graphics::glsl_to_spirv("graphics.vert", include_str!("shader/graphics.vert"), shaderc::ShaderKind::Vertex);
-    let fs_bytes = graphics::glsl_to_spirv("graphics.frag", include_str!("shader/graphics.frag"), shaderc::ShaderKind::Fragment);
+    let vs_bytes = graphics::glsl_to_spirv(
+        "graphics.vert",
+        include_str!("shader/graphics.vert"),
+        shaderc::ShaderKind::Vertex,
+    );
+    let fs_bytes = graphics::glsl_to_spirv(
+        "graphics.frag",
+        include_str!("shader/graphics.frag"),
+        shaderc::ShaderKind::Fragment,
+    );
     let vs_module = device.create_shader_module(&vs_bytes);
     let fs_module = device.create_shader_module(&fs_bytes);
 
@@ -422,7 +449,7 @@ pub fn leggo<R: Render>(render: R, viewport: Box2DData) {
                 wgpu::VertexAttributeDescriptor {
                     format: wgpu::VertexFormat::Float3,
                     offset: 8, // Because this is preceded by two 4-byte floats?
-                    shader_location: 1
+                    shader_location: 1,
                 },
             ],
         }],
@@ -503,7 +530,8 @@ pub fn leggo<R: Render>(render: R, viewport: Box2DData) {
         for text in render.texts() {
             glyph_brush.queue(Section {
                 text: &text.text,
-                screen_position: transform_viewport(&text.location, &viewport, aspect_ratio).to_tuple(),
+                screen_position: transform_viewport(&text.location, &viewport, aspect_ratio)
+                    .to_tuple(),
                 color: [0.0, 0.0, 0.0, 1.0],
                 scale: Scale { x: 40.0, y: 40.0 },
                 bounds: (size.width as f32, size.height as f32),
@@ -512,13 +540,15 @@ pub fn leggo<R: Render>(render: R, viewport: Box2DData) {
         }
 
         // Draw queued texts
-        glyph_brush.draw_queued(
-            &mut device,
-            &mut encoder,
-            &frame.view,
-            size.width.round() as u32,
-            size.height.round() as u32,
-        ).unwrap();
+        glyph_brush
+            .draw_queued(
+                &mut device,
+                &mut encoder,
+                &frame.view,
+                size.width.round() as u32,
+                size.height.round() as u32,
+            )
+            .unwrap();
 
         device.get_queue().submit(&[encoder.finish()]);
 

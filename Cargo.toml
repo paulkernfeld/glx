@@ -8,6 +8,7 @@ build = "build.rs"
 [dependencies]
 byteorder = "*"
 csv = "1"
+either = "*"
 env_logger = "0.6"
 euclid = "*"
 flate2 = "*"
