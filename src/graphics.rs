@@ -165,7 +165,7 @@ fn transform_viewport(
     aspect_ratio: f32,
 ) -> Point2D<f32> {
     Point2D::new(
-        (2.0 * (point.x - viewport.min.x) / (viewport.max.x - viewport.min.x) - 1.0) / aspect_ratio,
+        2.0 * (point.x - viewport.min.x) / (viewport.max.x - viewport.min.x) - 1.0,
         2.0 * (point.y - viewport.min.y) / (viewport.max.y - viewport.min.y) - 1.0,
     )
 }
