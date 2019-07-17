@@ -25,8 +25,8 @@ pub fn scale_temperature(mut scalar: f32, n_chunks: f32) -> [f32; 4] {
     let chroma = 90.0;
     match Srgb::from(
         Gradient::new(vec![
-            Lch::new(lightness, chroma, 60.0),
             Lch::new(lightness, chroma, 280.0),
+            Lch::new(lightness, chroma, 60.0),
         ])
         .get(scalar),
     )
