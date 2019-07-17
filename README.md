@@ -305,6 +305,7 @@ I used [OpenStreetMap](http://openstreetmap.org/) and [wgpu-rs](https://github.c
 ## TODO before release
 
 - "Complete" presentation
+- Add a legend or numerical labels 
 
 ## TODO after release
 

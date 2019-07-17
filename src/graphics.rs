@@ -1,4 +1,5 @@
 use log::*;
+
 extern crate env_logger;
 extern crate wgpu;
 
@@ -97,17 +98,20 @@ impl<L: Render, R: Render> Render for Either<L, R> {
 }
 
 /// Cells are implicitly based around the origin
-pub struct FnGrid<F> {
+pub struct FnGrid<F, G> {
     pub viewport: Box2DData,
 
     /// The side length of a cell, in data space
     pub cell_size: f32,
 
     /// Given the center of a grid cell, return the color to paint this grid cell
-    pub function: F,
+    pub color_fn: F,
+
+    /// Given the center of a grid cell, return the label of this grid cell
+    pub label_fn: G,
 }
 
-impl<F: Fn(Point2DData) -> [f32; 4]> Render for FnGrid<F> {
+impl<F: Fn(Point2DData) -> [f32; 4], G: Fn(Point2DData) -> String> Render for FnGrid<F, G> {
     fn styled_geoms(&self) -> Vec<StyledGeom> {
         let min_x = (self.viewport.min.x / self.cell_size).floor() as isize;
         let min_y = (self.viewport.min.y / self.cell_size).floor() as isize;
@@ -126,7 +130,7 @@ impl<F: Fn(Point2DData) -> [f32; 4]> Render for FnGrid<F> {
                         Point2DData::new(cell_x_min + self.cell_size, cell_y_min + self.cell_size),
                         Point2DData::new(cell_x_min, cell_y_min + self.cell_size),
                     ]),
-                    color: (self.function)(Point2DData::new(
+                    color: (self.color_fn)(Point2DData::new(
                         cell_x_min + self.cell_size * 0.5,
                         cell_y_min + self.cell_size * 0.5,
                     )),
@@ -137,7 +141,27 @@ impl<F: Fn(Point2DData) -> [f32; 4]> Render for FnGrid<F> {
     }
 
     fn texts(&self) -> Vec<Text> {
-        vec![]
+        let min_x = (self.viewport.min.x / self.cell_size).floor() as isize;
+        let min_y = (self.viewport.min.y / self.cell_size).floor() as isize;
+        let max_x = (self.viewport.max.x / self.cell_size).floor() as isize;
+        let max_y = (self.viewport.max.y / self.cell_size).floor() as isize;
+
+        let mut cells = vec![];
+        for x in min_x..=max_x {
+            let cell_x_min = x as f32 * self.cell_size;
+            for y in min_y..=max_y {
+                let cell_y_min = y as f32 * self.cell_size;
+                let location = Point2DData::new(
+                    cell_x_min + self.cell_size * 0.5,
+                    cell_y_min + self.cell_size * 0.5,
+                );
+                cells.push(Text {
+                    text: (self.label_fn)(location),
+                    location,
+                })
+            }
+        }
+        cells
     }
 }
 
@@ -200,10 +224,7 @@ pub enum PointStyle {
 }
 
 /// Transform this point from data space into drawing space coordinates
-fn transform_viewport(
-    point: &Point2DData,
-    viewport: &Box2DData,
-) -> Point2D<f32> {
+fn transform_viewport(point: &Point2DData, viewport: &Box2DData) -> Point2D<f32> {
     Point2D::new(
         2.0 * (point.x - viewport.min.x) / (viewport.max.x - viewport.min.x) - 1.0,
         2.0 * (point.y - viewport.min.y) / (viewport.max.y - viewport.min.y) - 1.0,
@@ -214,14 +235,6 @@ fn transform_viewport_1d(len: f32, viewport: &Box2DData) -> f32 {
     2.0 * len / (viewport.max.y - viewport.min.y)
 }
 
-// Stages:
-// 1. Data space coordinates, i.e. locations on the Somerville map
-//     viewport transform
-// 2. Drawing space coordinates
-//     screen transform
-// 3. Screen coordinates, i.e. pixels
-//    hardcoded basically divide by screen resoltion
-// 4. wgpu -1 to 1 coordinates?
 fn geom_to_path(geom: Geom, viewport: Box2DData, screen: Vector2D<usize>) -> MyPath {
     let mut builder = Path::builder();
 
@@ -320,7 +333,7 @@ fn create_vertices(
 
 use self::wgpu::TextureFormat;
 use log::info;
-use wgpu_glyph::{GlyphBrushBuilder, Scale, Section};
+use wgpu_glyph::{GlyphBrushBuilder, HorizontalAlign, Layout, Scale, Section, VerticalAlign};
 
 #[allow(dead_code)]
 pub fn cast_slice<T>(data: &[T]) -> &[u8] {
@@ -467,6 +480,18 @@ pub fn leggo<R: Render>(render: R, viewport: Box2DData) {
         .unwrap()
         .to_physical(window.get_hidpi_factor());
 
+    // The vertex shader requires this
+    assert_eq!(size.width as f32 / size.height as f32, 1.6);
+
+    // Transform from (-1..1) to pixels
+    let transform_window = |location: Point2D<f32>| {
+        Point2D::new(
+            ((location.x + 1.0) * 0.5) * size.height as f32
+                + (size.width - size.height) as f32 * 0.5,
+            ((location.y + 1.0) * 0.5) * size.height as f32,
+        )
+    };
+
     let surface = instance.create_surface(&window);
     let mut swap_chain = device.create_swap_chain(
         &surface,
@@ -528,11 +553,14 @@ pub fn leggo<R: Render>(render: R, viewport: Box2DData) {
         for text in render.texts() {
             glyph_brush.queue(Section {
                 text: &text.text,
-                screen_position: transform_viewport(&text.location, &viewport)
+                screen_position: transform_window(transform_viewport(&text.location, &viewport))
                     .to_tuple(),
                 color: [0.0, 0.0, 0.0, 1.0],
                 scale: Scale { x: 40.0, y: 40.0 },
                 bounds: (size.width as f32, size.height as f32),
+                layout: Layout::default_single_line()
+                    .h_align(HorizontalAlign::Center)
+                    .v_align(VerticalAlign::Center),
                 ..Section::default()
             });
         }

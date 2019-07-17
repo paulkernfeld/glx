@@ -11,7 +11,7 @@ fn main() {
     let fn_grid = FnGrid {
         viewport,
         cell_size: 0.95,
-        function: |point: Point2DData| [0.0, (point.x + 2.0) / 4.0, (point.y + 2.0) / 4.0, 1.0],
+        color_fn: |point: Point2DData| [0.0, (point.x + 2.0) / 4.0, (point.y + 2.0) / 4.0, 1.0],
     };
 
     graphics::leggo(

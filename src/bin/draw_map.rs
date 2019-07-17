@@ -207,11 +207,13 @@ fn make_render(viewport: Box2DData) -> impl Render {
         })
         .collect();
 
+    let stations_2 = stations.clone();
+
     vec![
         Either::Right(FnGrid {
             viewport,
-            cell_size: 100.0,
-            function: move |point| {
+            cell_size: 300.0,
+            color_fn: move |point| {
                 // Using a move closure here is sort of weird. Do we really want to maintain a
                 // dependency on our data all the way through our rendering phases?
 
@@ -223,6 +225,10 @@ fn make_render(viewport: Box2DData) -> impl Render {
                     MbtaLine::Red => [217.0 / 255.0, 37.0 / 255.0, 10.0 / 255.0, 1.0],
                 };
                 color
+            },
+            label_fn: move |point| {
+                let best_after = best_station(&stations_2, point);
+                best_after.station.name
             },
         }),
         Either::Left(osm_styled_geoms),
