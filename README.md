@@ -302,8 +302,9 @@ I used [OpenStreetMap](http://openstreetmap.org/) and [wgpu-rs](https://github.c
 
 # Notes
 
-## TODO before release
+## TODO before presentation
 
+- Be able to render all of Somerville
 - "Complete" presentation
 - Add a legend or numerical labels 
 

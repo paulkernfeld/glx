@@ -353,13 +353,6 @@ pub fn glsl_to_spirv(name: &str, source: &str, kind: shaderc::ShaderKind) -> Vec
     )
 }
 
-pub trait Example {
-    fn init(sc_desc: &wgpu::SwapChainDescriptor, device: &mut wgpu::Device) -> Self;
-    fn resize(&mut self, sc_desc: &wgpu::SwapChainDescriptor, device: &mut wgpu::Device);
-    fn update(&mut self, event: wgpu::winit::WindowEvent);
-    fn render(&mut self, frame: &wgpu::SwapChainOutput, device: &mut wgpu::Device);
-}
-
 pub fn leggo<R: Render>(render: R, viewport: Box2DData) {
     debug!("Initializing WGPU...");
     let instance = wgpu::Instance::new();
@@ -480,7 +473,7 @@ pub fn leggo<R: Render>(render: R, viewport: Box2DData) {
         .unwrap()
         .to_physical(window.get_hidpi_factor());
 
-    // The vertex shader requires this
+    // The vertex shader is hardcoded to this value
     assert_eq!(size.width as f32 / size.height as f32, 1.6);
 
     // Transform from (-1..1) to pixels
