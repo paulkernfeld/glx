@@ -345,7 +345,10 @@ pub fn glsl_to_spirv(name: &str, source: &str, kind: shaderc::ShaderKind) -> Vec
     )
 }
 
-pub fn leggo<R: Render>(render: R, viewport: Box2DData) {
+pub fn leggo<R: Render>(render: R, viewport: Box2DData, path: std::path::PathBuf) {
+    // Number of pixels per size in the rendered image
+    let size = 256u32;
+
     debug!("Initializing WGPU...");
     let instance = wgpu::Instance::new();
 
@@ -376,13 +379,7 @@ pub fn leggo<R: Render>(render: R, viewport: Box2DData) {
 
     let vertex_size = std::mem::size_of::<Vertex>();
 
-    // Ways to get dimensions:
-    // - from actual window size when previewing
-    // - from an intended px dimension
-    // - from intended real world dimension + DPI
-    let screen = Vector2D::new(2880, 1800);
-
-    let (vertex_data, index_data) = create_vertices(render.styled_geoms(), screen, viewport);
+    let (vertex_data, index_data) = create_vertices(render.styled_geoms(), Vector2D::new(size as usize, size as usize), viewport);
     debug!("{} {}", vertex_data.len(), index_data.len());
 
     let vertex_buf = device
@@ -452,9 +449,6 @@ pub fn leggo<R: Render>(render: R, viewport: Box2DData) {
         sample_count: 1,
     });
 
-    // Number of pixels per size in the rendered image
-    let size = 2048u32;
-
     // The output buffer lets us retrieve the data as an array
     let output_buffer = device.create_buffer(&wgpu::BufferDescriptor {
         size: (size * size * std::mem::size_of::<u32>() as u32) as u64,
@@ -475,7 +469,7 @@ pub fn leggo<R: Render>(render: R, viewport: Box2DData) {
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
         format: wgpu::TextureFormat::Bgra8Unorm,
-        usage: wgpu::TextureUsage::NONE,
+        usage: wgpu::TextureUsage::STORAGE,
     });
     let texture_view = texture.create_default_view();
 
@@ -558,22 +552,17 @@ pub fn leggo<R: Render>(render: R, viewport: Box2DData) {
             texture_extent,
         );
 
-        encoder.finish()
-    };
+        encoder
+    }.finish();
+
+    device.get_queue().submit(&[command_buffer]);
 
     output_buffer.map_read_async(
         0,
         (std::mem::size_of::<u32>() as u32 * size * size) as u64,
-        |result: wgpu::BufferMapAsyncResult<&[u8]>| {
-            for pixel in result.unwrap().data.chunks(std::mem::size_of::<u32>()) {
-                let expected_b = 0;
-                let expected_g = 0;
-                let expected_r = 255;
-                let expected_a = 255;
-                assert_eq!(pixel, [expected_b, expected_g, expected_r, expected_a]);
-            }
+        move |result: wgpu::BufferMapAsyncResult<&[u8]>| {
+            let png_encoder = image::png::PNGEncoder::new(std::fs::File::create(path).unwrap());
+            png_encoder.encode(&result.unwrap().data, size, size, image::ColorType::RGBA(8)).unwrap();
         },
     );
-
-    device.get_queue().submit(&[command_buffer]);
 }

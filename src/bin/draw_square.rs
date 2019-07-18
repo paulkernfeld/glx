@@ -4,6 +4,7 @@ use glx::graphics;
 use glx::graphics::*;
 
 use log::*;
+use std::path::PathBuf;
 
 fn main() {
     // A no-op viewport
@@ -20,5 +21,6 @@ fn main() {
             color: [0.0, 0.0, 0.0, 0.5],
         }],
         Box2DData::new(Point2DData::new(0.0, 0.0), Point2DData::new(1.0, 1.0)),
+        PathBuf::from("square.png"),
     );
 }

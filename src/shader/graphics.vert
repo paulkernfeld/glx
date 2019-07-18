@@ -5,7 +5,7 @@ layout(location = 1) in vec4 vertexColor;
 layout(location = 0) out vec4 fragmentColor;
 
 void main() {
-    // Hack: divide x by hard-coded screen aspect ratio
-    gl_Position = vec4(pos[0] / 1.6, pos[1], 0.0, 1.0);
+    // This works correctly b/c we're rendering to a square
+    gl_Position = vec4(pos, 0.0, 1.0);
     fragmentColor = vertexColor;
 }
