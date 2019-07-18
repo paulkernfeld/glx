@@ -452,75 +452,55 @@ pub fn leggo<R: Render>(render: R, viewport: Box2DData) {
         sample_count: 1,
     });
 
-    use wgpu::winit::{
-        ControlFlow, ElementState, Event, EventsLoop, KeyboardInput, VirtualKeyCode, Window,
-        WindowEvent,
+    // Number of pixels per size in the rendered image
+    let size = 2048u32;
+
+    // The output buffer lets us retrieve the data as an array
+    let output_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+        size: (size * size * std::mem::size_of::<u32>() as u32) as u64,
+        usage: wgpu::BufferUsage::MAP_READ,
+    });
+
+    let texture_extent = wgpu::Extent3d {
+        width: size,
+        height: size,
+        depth: 1,
     };
 
-    let mut events_loop = EventsLoop::new();
-    let window = Window::new(&events_loop).unwrap();
-    window.set_fullscreen(Some(window.get_current_monitor()));
-    let size = window
-        .get_inner_size()
-        .unwrap()
-        .to_physical(window.get_hidpi_factor());
-
-    // The vertex shader is hardcoded to this value
-    assert_eq!(size.width as f32 / size.height as f32, 1.6);
+    // The render pipeline renders data into this texture
+    let texture = device.create_texture(&wgpu::TextureDescriptor {
+        size: texture_extent,
+        array_layer_count: 1,
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: wgpu::TextureFormat::Bgra8Unorm,
+        usage: wgpu::TextureUsage::NONE,
+    });
+    let texture_view = texture.create_default_view();
 
     // Transform from (-1..1) to pixels
     let transform_window = |location: Point2D<f32>| {
         Point2D::new(
-            ((location.x + 1.0) * 0.5) * size.height as f32
-                + (size.width - size.height) as f32 * 0.5,
-            ((location.y + 1.0) * 0.5) * size.height as f32,
+            ((location.x + 1.0) * 0.5) * size as f32,
+            ((location.y + 1.0) * 0.5) * size as f32,
         )
     };
-
-    let surface = instance.create_surface(&window);
-    let mut swap_chain = device.create_swap_chain(
-        &surface,
-        &wgpu::SwapChainDescriptor {
-            usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT,
-            format: wgpu::TextureFormat::Bgra8Unorm,
-            width: (size.width.round() as u32) * 4,
-            height: (size.height.round() as u32) * 4,
-        },
-    );
 
     // Prepare glyph_brush
     let inconsolata: &[u8] = include_bytes!("font/Inconsolata-Regular.ttf");
     let mut glyph_brush = GlyphBrushBuilder::using_font_bytes(inconsolata)
         .build(&mut device, TextureFormat::Bgra8Unorm);
 
-    events_loop.run_forever(|event| {
-        match event {
-            Event::WindowEvent { event, .. } => match event {
-                WindowEvent::KeyboardInput {
-                    input:
-                        KeyboardInput {
-                            virtual_keycode: Some(code),
-                            state: ElementState::Pressed,
-                            ..
-                        },
-                    ..
-                } => match code {
-                    VirtualKeyCode::Escape => return ControlFlow::Break,
-                    _ => {}
-                },
-                WindowEvent::CloseRequested => return ControlFlow::Break,
-                _ => {}
-            },
-            _ => {}
-        }
-
-        let frame = swap_chain.get_next_texture();
+    let command_buffer = {
         let mut encoder =
             device.create_command_encoder(&wgpu::CommandEncoderDescriptor { todo: 0 });
+
+        // Intentionally throw the render pass into a scope so that we drop it early, I think
         {
             let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
-                    attachment: &frame.view,
+                    attachment: &texture_view,
                     resolve_target: None,
                     load_op: wgpu::LoadOp::Clear,
                     store_op: wgpu::StoreOp::Store,
@@ -542,7 +522,7 @@ pub fn leggo<R: Render>(render: R, viewport: Box2DData) {
                     .to_tuple(),
                 color: [0.0, 0.0, 0.0, 1.0],
                 scale: Scale { x: 40.0, y: 40.0 },
-                bounds: (size.width as f32, size.height as f32),
+                bounds: (size as f32, size as f32),
                 layout: Layout::default_single_line()
                     .h_align(HorizontalAlign::Center)
                     .v_align(VerticalAlign::Center),
@@ -555,14 +535,45 @@ pub fn leggo<R: Render>(render: R, viewport: Box2DData) {
             .draw_queued(
                 &mut device,
                 &mut encoder,
-                &frame.view,
-                size.width.round() as u32,
-                size.height.round() as u32,
+                &texture_view,
+                size,
+                size,
             )
             .unwrap();
 
-        device.get_queue().submit(&[encoder.finish()]);
+        // Copy the data from the texture to the buffer
+        encoder.copy_texture_to_buffer(
+            wgpu::TextureCopyView {
+                texture: &texture,
+                mip_level: 0,
+                array_layer: 0,
+                origin: wgpu::Origin3d::ZERO,
+            },
+            wgpu::BufferCopyView {
+                buffer: &output_buffer,
+                offset: 0,
+                row_pitch: std::mem::size_of::<u32>() as u32 * size,
+                image_height: size,
+            },
+            texture_extent,
+        );
 
-        ControlFlow::Continue
-    });
+        encoder.finish()
+    };
+
+    output_buffer.map_read_async(
+        0,
+        (std::mem::size_of::<u32>() as u32 * size * size) as u64,
+        |result: wgpu::BufferMapAsyncResult<&[u8]>| {
+            for pixel in result.unwrap().data.chunks(std::mem::size_of::<u32>()) {
+                let expected_b = 0;
+                let expected_g = 0;
+                let expected_r = 255;
+                let expected_a = 255;
+                assert_eq!(pixel, [expected_b, expected_g, expected_r, expected_a]);
+            }
+        },
+    );
+
+    device.get_queue().submit(&[command_buffer]);
 }
