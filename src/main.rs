@@ -12,6 +12,7 @@ use glx::protos::*;
 use glx::*;
 use rayon::prelude::*;
 use std::fs::File;
+use std::path::PathBuf;
 
 use geo_types::Point;
 
@@ -288,5 +289,5 @@ fn main() {
         Point2DData::new(1000.0, 1000.0),
     );
 
-    graphics::leggo(make_render(viewport), viewport);
+    graphics::leggo(make_render(viewport), viewport, PathBuf::from("output/map.png"));
 }

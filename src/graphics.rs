@@ -566,3 +566,191 @@ pub fn leggo<R: Render>(render: R, viewport: Box2DData, path: std::path::PathBuf
         },
     );
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::graphics::*;
+
+    use crate::graphics;
+    use crate::graphics::*;
+
+    use log::*;
+    use std::path::PathBuf;
+
+    #[test]
+    fn test_fn_grid() {
+        // This should render a 40x40 grid with black in the bottom left and white in one corner. The
+        // grid should be slightly falling off the screen.
+        let viewport = Box2DData::new(Point2DData::new(-2.0, -2.0), Point2DData::new(2.0, 2.0));
+        graphics::leggo(
+            vec![FnGrid {
+                viewport,
+                cell_size: 1.0,
+                color_fn: |point: Point2DData| [0.0, (point.x + 2.0) / 4.0, (point.y + 2.0) / 4.0, 1.0],
+                label_fn: |point: Point2DData| format!("{}", point),
+            }],
+            viewport,
+            PathBuf::from("output/fn_grid.png")
+        );
+    }
+
+    #[test]
+    fn test_layers() {
+        let viewport = Box2DData::new(Point2DData::new(-2.0, -2.0), Point2DData::new(2.0, 2.0));
+        let fn_grid = FnGrid {
+            viewport,
+            cell_size: 0.95,
+            color_fn: |point: Point2DData| [0.0, (point.x + 2.0) / 4.0, (point.y + 2.0) / 4.0, 1.0],
+            label_fn: |point: Point2DData| format!("{:?}", point),
+        };
+
+        graphics::leggo(
+            vec![
+                StyledGeom {
+                    geom: Geom::Point(Point2DData::new(-0.5, -0.5)),
+                    color: [1.0, 1.0, 0.0, 1.0],
+                },
+                StyledGeom {
+                    geom: Geom::Point(Point2DData::new(0.5, -0.5)),
+                    color: [1.0, 0.0, 1.0, 1.0],
+                },
+                StyledGeom {
+                    geom: Geom::Point(Point2DData::new(0.5, 0.5)),
+                    color: [0.0, 1.0, 1.0, 1.0],
+                },
+                StyledGeom {
+                    geom: Geom::Point(Point2DData::new(-0.5, 0.5)),
+                    color: [0.5, 0.5, 0.5, 1.0],
+                },
+            ],
+            Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(1.0, 1.0)),
+            PathBuf::from("output/layers.png")
+        );
+    }
+
+    #[test]
+    fn test_line_width() {
+        // This should show two lines that are exactly as wide as they are long, i.e. squares
+        graphics::leggo(
+            vec![
+                StyledGeom {
+                    geom: Geom::Lines {
+                        points: vec![Point2DData::new(-1.0, -0.5), Point2DData::new(0.0, -0.5)],
+                        width: 1.0,
+                    },
+                    color: [1.0, 0.0, 1.0, 1.0],
+                },
+                StyledGeom {
+                    geom: Geom::Lines {
+                        points: vec![Point2DData::new(0.5, 0.0), Point2DData::new(0.5, 1.0)],
+                        width: 1.0,
+                    },
+                    color: [1.0, 0.0, 1.0, 1.0],
+                },
+            ],
+            Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(1.0, 1.0)),
+            PathBuf::from("output/line_width.png")
+        );
+    }
+
+    #[test]
+    fn test_lines() {
+        // This should show a filled circle that fades angularly along the palette gradient
+        // This seems to be able to handle 100,000 lines but not 1,000,000
+        let n = 1000;
+        leggo(
+            (0..n)
+                .map(|i| {
+                    let ratio = (i as f32) / (n as f32);
+                    let angle = ratio * 2.0 * std::f32::consts::PI;
+                    StyledGeom {
+                        geom: Geom::Lines {
+                            points: vec![
+                                Point2DData::new(0.0, 0.0),
+                                Point2DData::new(angle.cos(), angle.sin()),
+                            ],
+                            width: 0.002,
+                        },
+                        color: scale_temperature(ratio, 16.0),
+                    }
+                })
+                .collect::<Vec<_>>(),
+            Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(1.0, 1.0)),
+            PathBuf::from("output/lines.png"),
+        );
+    }
+
+
+    #[test]
+    fn test_points() {
+        // This should render a square that's half the height of the screen, right in the middle of the
+        // screen.
+        graphics::leggo(
+            vec![
+                StyledGeom {
+                    geom: Geom::Point(Point2DData::new(-0.5, -0.5)),
+                    color: [1.0, 1.0, 0.0, 1.0],
+                },
+                StyledGeom {
+                    geom: Geom::Point(Point2DData::new(0.5, -0.5)),
+                    color: [1.0, 0.0, 1.0, 1.0],
+                },
+                StyledGeom {
+                    geom: Geom::Point(Point2DData::new(0.5, 0.5)),
+                    color: [0.0, 1.0, 1.0, 1.0],
+                },
+                StyledGeom {
+                    geom: Geom::Point(Point2DData::new(-0.5, 0.5)),
+                    color: [0.5, 0.5, 0.5, 1.0],
+                },
+            ],
+            Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(1.0, 1.0)),
+            PathBuf::from("output/points.png")
+        );
+    }
+
+
+    // This should render a black transparent square that's half the height of the screen, right in
+    // the middle of the screen.
+    #[test]
+    fn test_square() {
+        graphics::leggo(
+            vec![StyledGeom {
+                geom: Geom::Polygon(vec![
+                    Point2DData::new(0.25, 0.25),
+                    Point2DData::new(0.75, 0.25),
+                    Point2DData::new(0.75, 0.75),
+                    Point2DData::new(0.25, 0.75),
+                ]),
+                color: [0.0, 0.0, 0.0, 0.5],
+            }],
+            Box2DData::new(Point2DData::new(0.0, 0.0), Point2DData::new(1.0, 1.0)),
+            PathBuf::from("output/square.png"),
+        );
+    }
+
+
+    /// This should render some text in the center of the screen
+    #[test]
+    fn test_text() {
+        leggo(
+            vec![
+                Text {
+                    text: "center".to_string(),
+                    location: Point2DData::new(0.0, 0.0),
+                },
+                Text {
+                    text: "top left".to_string(),
+                    location: Point2DData::new(-1.0, -1.0),
+                },
+                Text {
+                    text: "bottom right".to_string(),
+                    location: Point2DData::new(1.0, 1.0),
+                },
+            ],
+            Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(1.0, 1.0)),
+            PathBuf::from("output/text.png")
+        );
+    }
+
+}
