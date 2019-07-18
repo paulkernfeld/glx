@@ -5,6 +5,7 @@ use glx::graphics::*;
 
 use euclid::*;
 use log::*;
+use std::path::PathBuf;
 
 fn main() {
     // This should render a square that's half the height of the screen, right in the middle of the
@@ -29,5 +30,6 @@ fn main() {
             },
         ],
         Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(1.0, 1.0)),
+        PathBuf::from("points.png")
     );
 }
