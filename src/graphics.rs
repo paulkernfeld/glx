@@ -8,7 +8,6 @@ use euclid::{Point2D, TypedPoint2D};
 use lyon::tessellation::*;
 
 use crate::graphics;
-use shaderc;
 
 use euclid::*;
 
@@ -451,18 +450,8 @@ use self::wgpu::TextureFormat;
 use log::info;
 use wgpu_glyph::{GlyphBrushBuilder, HorizontalAlign, Layout, Scale, Section, VerticalAlign};
 
-pub fn glsl_to_spirv(name: &str, source: &str, kind: shaderc::ShaderKind) -> Vec<u8> {
-    let mut compiler = shaderc::Compiler::new().unwrap();
-    Vec::from(
-        compiler
-            .compile_into_spirv(source, kind, name, "main", None)
-            .unwrap()
-            .as_binary_u8(),
-    )
-}
-
 /// Render to a PNG image with the given path
-pub fn capture<R: Render>(render: R, viewport: Box2DData, path: std::path::PathBuf,) {
+pub fn capture<R: Render>(render: R, viewport: Box2DData, path: std::path::PathBuf) {
     // Number of pixels per side in the rendered image
     let size = 2048u32;
 
@@ -480,17 +469,9 @@ pub fn capture<R: Render>(render: R, viewport: Box2DData, path: std::path::PathB
         limits: wgpu::Limits::default(),
     });
 
-    debug!("building shaders...");
-    let vs_bytes = graphics::glsl_to_spirv(
-        "graphics.vert",
-        include_str!("shader/graphics.vert"),
-        shaderc::ShaderKind::Vertex,
-    );
-    let fs_bytes = graphics::glsl_to_spirv(
-        "graphics.frag",
-        include_str!("shader/graphics.frag"),
-        shaderc::ShaderKind::Fragment,
-    );
+    let vs_bytes = Vec::from(include_bytes!("spirv/vert.spirv") as &[u8]);
+    let fs_bytes = Vec::from(include_bytes!("spirv/frag.spirv") as &[u8]);
+
     let vs_module = device.create_shader_module(&vs_bytes);
     let fs_module = device.create_shader_module(&fs_bytes);
 
@@ -727,9 +708,7 @@ mod tests {
             vec![FnGrid {
                 viewport: Some(viewport),
                 cell_size: 0.0005,
-                color_fn: |point: Point2DData| {
-                    [0.0, point.x, point.y, 1.0]
-                },
+                color_fn: |point: Point2DData| [0.0, point.x, point.y, 1.0],
                 label_fn: |point: Point2DData| String::from(""),
             }],
             viewport,
