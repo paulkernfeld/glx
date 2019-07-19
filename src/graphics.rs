@@ -345,8 +345,9 @@ pub fn glsl_to_spirv(name: &str, source: &str, kind: shaderc::ShaderKind) -> Vec
     )
 }
 
-pub fn leggo<R: Render>(render: R, viewport: Box2DData, path: std::path::PathBuf) {
-    // Number of pixels per size in the rendered image
+/// Render to a PNG image with the given path
+pub fn capture<R: Render>(render: R, viewport: Box2DData, path: std::path::PathBuf) {
+    // Number of pixels per side in the rendered image
     let size = 2048u32;
 
     debug!("Initializing WGPU...");
@@ -586,10 +587,8 @@ mod tests {
 
     #[test]
     fn test_fn_grid() {
-        // This should render a 40x40 grid with black in the bottom left and white in one corner. The
-        // grid should be slightly falling off the screen.
         let viewport = Box2DData::new(Point2DData::new(-2.0, -2.0), Point2DData::new(2.0, 2.0));
-        graphics::leggo(
+        graphics::capture(
             vec![FnGrid {
                 viewport,
                 cell_size: 1.0,
@@ -613,7 +612,7 @@ mod tests {
             label_fn: |point: Point2DData| format!("{:?}", point),
         };
 
-        graphics::leggo(
+        graphics::capture(
             vec![
                 StyledGeom {
                     geom: Geom::Point(Point2DData::new(-0.5, -0.5)),
@@ -640,7 +639,7 @@ mod tests {
     #[test]
     fn test_line_width() {
         // This should show two lines that are exactly as wide as they are long, i.e. squares
-        graphics::leggo(
+        graphics::capture(
             vec![
                 StyledGeom {
                     geom: Geom::Lines {
@@ -667,7 +666,7 @@ mod tests {
         // This should show a filled circle that fades angularly along the palette gradient
         // This seems to be able to handle 100,000 lines but not 1,000,000
         let n = 1000;
-        leggo(
+        capture(
             (0..n)
                 .map(|i| {
                     let ratio = (i as f32) / (n as f32);
@@ -693,7 +692,7 @@ mod tests {
     fn test_points() {
         // This should render a square that's half the height of the screen, right in the middle of the
         // screen.
-        graphics::leggo(
+        graphics::capture(
             vec![
                 StyledGeom {
                     geom: Geom::Point(Point2DData::new(-0.5, -0.5)),
@@ -721,7 +720,7 @@ mod tests {
     // the middle of the screen.
     #[test]
     fn test_square() {
-        graphics::leggo(
+        graphics::capture(
             vec![StyledGeom {
                 geom: Geom::Polygon(vec![
                     Point2DData::new(0.25, 0.25),
@@ -739,7 +738,7 @@ mod tests {
     /// This should render some text in the center of the screen
     #[test]
     fn test_text() {
-        leggo(
+        capture(
             vec![
                 Text {
                     text: "center".to_string(),

@@ -2,7 +2,7 @@
 //! use glx::protos::read_blobs;
 //! use std::io::Cursor;
 //!
-//! assert!(read_blobs(Cursor::new(include_bytes!("../../pbf/massachusetts-latest.osm.pbf") as &[u8])).next().is_some());
+//! assert!(read_blobs(Cursor::new(include_bytes!("../../pbf/saint-helena-ascension-and-tristan-da-cunha-latest.osm.pbf") as &[u8])).next().is_some());
 //! ```
 //! https://wiki.openstreetmap.org/wiki/PBF_Format
 //! Protobuf lives here: https://github.com/scrosby/OSM-binary
@@ -260,7 +260,7 @@ mod tests {
     use std::io::Read;
 
     fn get_reader() -> impl Read {
-        File::open("pbf/massachusetts-latest.osm.pbf").unwrap()
+        File::open("pbf/saint-helena-ascension-and-tristan-da-cunha-latest.osm.pbf").unwrap()
     }
 
     #[test]
