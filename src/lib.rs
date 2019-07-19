@@ -70,26 +70,3 @@ pub fn dense_node_to_x_y(node: &DenseNode, centroid: Point<f32>) -> Point2DData 
     let lon = node.lon as f32 / 10000000.0;
     lat_lon_to_x_y(&centroid, (lat, lon))
 }
-
-#[cfg(test)]
-mod tests {
-    use log::*;
-    use std::fs::File;
-    use std::io::{Cursor, Read, Seek};
-
-    use osmpbfreader::objects::*;
-    use osmpbfreader::OsmPbfReader;
-
-    pub fn reader() -> OsmPbfReader<impl Read + Seek> {
-        info!("reading file...");
-        let mut buffer: Vec<_> = Default::default();
-        File::open("pbf/massachusetts-latest.osm.pbf")
-            .unwrap()
-            .read_to_end(&mut buffer)
-            .unwrap();
-
-        info!("read file");
-
-        osmpbfreader::OsmPbfReader::new(Cursor::new(buffer))
-    }
-}

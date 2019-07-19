@@ -599,12 +599,12 @@ mod tests {
             }],
             viewport,
             PathBuf::from("output/fn_grid.png"),
-            1
         );
     }
 
     /// This grid is designed to be too be large to naively render on my graphics card
     #[test]
+    #[ignore]
     fn test_fn_grid_many() {
         let viewport = Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(1.0, 1.0));
         graphics::capture(
@@ -618,7 +618,6 @@ mod tests {
             }],
             viewport,
             PathBuf::from("output/fn_grid_many.png"),
-            1
         );
     }
 
@@ -653,7 +652,6 @@ mod tests {
             ],
             Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(1.0, 1.0)),
             PathBuf::from("output/layers.png"),
-            1
         );
     }
 
@@ -679,7 +677,6 @@ mod tests {
             ],
             Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(1.0, 1.0)),
             PathBuf::from("output/line_width.png"),
-            1
         );
     }
 
@@ -707,7 +704,6 @@ mod tests {
                 .collect::<Vec<_>>(),
             Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(1.0, 1.0)),
             PathBuf::from("output/lines.png"),
-            1
         );
     }
 
@@ -736,7 +732,6 @@ mod tests {
             ],
             Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(1.0, 1.0)),
             PathBuf::from("output/points.png"),
-            1
         );
     }
 
@@ -756,7 +751,6 @@ mod tests {
             }],
             Box2DData::new(Point2DData::new(0.0, 0.0), Point2DData::new(1.0, 1.0)),
             PathBuf::from("output/square.png"),
-            1
         );
     }
 
@@ -780,7 +774,6 @@ mod tests {
             ],
             Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(1.0, 1.0)),
             PathBuf::from("output/text.png"),
-            1
         );
     }
 

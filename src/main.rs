@@ -199,13 +199,14 @@ fn make_render(viewport: Box2DData) -> impl Render {
                     color: [color_object, color_object, color_object, 0.7],
                 })
             } else {
-                Some(StyledGeom {
-                    geom: Geom::Lines {
-                        points: nodes,
-                        width: 3.0,
-                    },
-                    color: [color_object, color_object, color_object, 0.3],
-                })
+                None
+//                Some(StyledGeom {
+//                    geom: Geom::Lines {
+//                        points: nodes,
+//                        width: 3.0,
+//                    },
+//                    color: [color_object, color_object, color_object, 0.3],
+//                })
             }
         })
         .collect();

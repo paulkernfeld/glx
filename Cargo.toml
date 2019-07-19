@@ -27,7 +27,9 @@ wgpu_glyph = { "git" = "https://github.com/hecrj/wgpu_glyph", "rev" = "e20f471"}
 
 [dev-dependencies]
 lazy_static = "1"
-osmpbfreader = "0.13"
+
+[build-dependencies]
+protoc-rust = "2"
 
 [features]
 default = ["metal"]  # For Paul's convenience
@@ -35,6 +37,3 @@ metal = ["wgpu/metal"]
 dx11 = ["wgpu/dx11"]
 dx12 = ["wgpu/dx12"]
 vulkan = ["wgpu/vulkan"]
-
-[build-dependencies]
-protoc-rust = "2"
