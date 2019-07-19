@@ -429,7 +429,11 @@ pub fn leggo<R: Render>(render: R, viewport: Box2DData, path: std::path::PathBuf
                 dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
                 operation: wgpu::BlendOperation::Add,
             },
-            alpha_blend: wgpu::BlendDescriptor::REPLACE,
+            alpha_blend: wgpu::BlendDescriptor {
+                src_factor: wgpu::BlendFactor::Zero,
+                dst_factor: wgpu::BlendFactor::One,
+                operation: wgpu::BlendOperation::Add,
+            },
             write_mask: wgpu::ColorWrite::ALL,
         }],
         depth_stencil_state: None,
@@ -557,6 +561,7 @@ pub fn leggo<R: Render>(render: R, viewport: Box2DData, path: std::path::PathBuf
 
     device.get_queue().submit(&[command_buffer]);
 
+    // Dump the image into a PNG
     output_buffer.map_read_async(
         0,
         (std::mem::size_of::<u32>() as u32 * size * size) as u64,
