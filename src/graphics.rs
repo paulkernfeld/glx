@@ -728,7 +728,7 @@ mod tests {
                 viewport: Some(viewport),
                 cell_size: 0.0005,
                 color_fn: |point: Point2DData| {
-                    [0.0, (point.x + 2.0) / 4.0, (point.y + 2.0) / 4.0, 1.0]
+                    [0.0, point.x, point.y, 1.0]
                 },
                 label_fn: |point: Point2DData| String::from(""),
             }],

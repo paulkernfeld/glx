@@ -20,7 +20,6 @@ lyon = "*"
 palette = "0.4"
 protobuf = "2"
 rayon = "1"
-rstar = "*"
 shaderc = "0.5"
 wgpu = { version = "0.2.2", git = "https://github.com/gfx-rs/wgpu-rs", rev = "a4ad7ae6ff2fc42396b802968dcc95bbf0612235" } # from wgpu_glyph
 wgpu_glyph = { "git" = "https://github.com/hecrj/wgpu_glyph", "rev" = "e20f471"}

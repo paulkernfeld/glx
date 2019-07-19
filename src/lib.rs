@@ -30,25 +30,25 @@ impl PartialEq for MyNode {
     }
 }
 
-impl rstar::Point for MyNode {
-    type Scalar = f64;
-    const DIMENSIONS: usize = 2;
-
-    fn generate(generator: impl Fn(usize) -> Self::Scalar) -> Self {
-        MyNode {
-            x_y_meters: <[f64; 2]>::generate(generator),
-            node_id: -9999,
-        }
-    }
-
-    fn nth(&self, index: usize) -> Self::Scalar {
-        self.x_y_meters.nth(index)
-    }
-
-    fn nth_mut(&mut self, _index: usize) -> &mut Self::Scalar {
-        unimplemented!()
-    }
-}
+//impl rstar::Point for MyNode {
+//    type Scalar = f64;
+//    const DIMENSIONS: usize = 2;
+//
+//    fn generate(generator: impl Fn(usize) -> Self::Scalar) -> Self {
+//        MyNode {
+//            x_y_meters: <[f64; 2]>::generate(generator),
+//            node_id: -9999,
+//        }
+//    }
+//
+//    fn nth(&self, index: usize) -> Self::Scalar {
+//        self.x_y_meters.nth(index)
+//    }
+//
+//    fn nth_mut(&mut self, _index: usize) -> &mut Self::Scalar {
+//        unimplemented!()
+//    }
+//}
 
 const DEG_TO_RAD: f32 = 2.0 * std::f32::consts::PI / 360.0;
 
