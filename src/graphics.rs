@@ -347,7 +347,7 @@ pub fn glsl_to_spirv(name: &str, source: &str, kind: shaderc::ShaderKind) -> Vec
 
 pub fn leggo<R: Render>(render: R, viewport: Box2DData, path: std::path::PathBuf) {
     // Number of pixels per size in the rendered image
-    let size = 256u32;
+    let size = 2048u32;
 
     debug!("Initializing WGPU...");
     let instance = wgpu::Instance::new();
@@ -379,7 +379,11 @@ pub fn leggo<R: Render>(render: R, viewport: Box2DData, path: std::path::PathBuf
 
     let vertex_size = std::mem::size_of::<Vertex>();
 
-    let (vertex_data, index_data) = create_vertices(render.styled_geoms(), Vector2D::new(size as usize, size as usize), viewport);
+    let (vertex_data, index_data) = create_vertices(
+        render.styled_geoms(),
+        Vector2D::new(size as usize, size as usize),
+        viewport,
+    );
     debug!("{} {}", vertex_data.len(), index_data.len());
 
     let vertex_buf = device
@@ -482,9 +486,10 @@ pub fn leggo<R: Render>(render: R, viewport: Box2DData, path: std::path::PathBuf
     };
 
     // Prepare glyph_brush
-    let inconsolata: &[u8] = include_bytes!("font/Inconsolata-Regular.ttf");
-    let mut glyph_brush = GlyphBrushBuilder::using_font_bytes(inconsolata)
-        .build(&mut device, TextureFormat::Bgra8Unorm);
+    let font: &[u8] =
+        include_bytes!("font/cooper-hewitt-fixed-for-windows-master/CooperHewitt-Semibold.ttf");
+    let mut glyph_brush =
+        GlyphBrushBuilder::using_font_bytes(font).build(&mut device, TextureFormat::Bgra8Unorm);
 
     let command_buffer = {
         let mut encoder =
@@ -526,13 +531,7 @@ pub fn leggo<R: Render>(render: R, viewport: Box2DData, path: std::path::PathBuf
 
         // Draw queued texts
         glyph_brush
-            .draw_queued(
-                &mut device,
-                &mut encoder,
-                &texture_view,
-                size,
-                size,
-            )
+            .draw_queued(&mut device, &mut encoder, &texture_view, size, size)
             .unwrap();
 
         // Copy the data from the texture to the buffer
@@ -553,7 +552,8 @@ pub fn leggo<R: Render>(render: R, viewport: Box2DData, path: std::path::PathBuf
         );
 
         encoder
-    }.finish();
+    }
+    .finish();
 
     device.get_queue().submit(&[command_buffer]);
 
@@ -562,7 +562,9 @@ pub fn leggo<R: Render>(render: R, viewport: Box2DData, path: std::path::PathBuf
         (std::mem::size_of::<u32>() as u32 * size * size) as u64,
         move |result: wgpu::BufferMapAsyncResult<&[u8]>| {
             let png_encoder = image::png::PNGEncoder::new(std::fs::File::create(path).unwrap());
-            png_encoder.encode(&result.unwrap().data, size, size, image::ColorType::RGBA(8)).unwrap();
+            png_encoder
+                .encode(&result.unwrap().data, size, size, image::ColorType::RGBA(8))
+                .unwrap();
         },
     );
 }
@@ -586,11 +588,13 @@ mod tests {
             vec![FnGrid {
                 viewport,
                 cell_size: 1.0,
-                color_fn: |point: Point2DData| [0.0, (point.x + 2.0) / 4.0, (point.y + 2.0) / 4.0, 1.0],
+                color_fn: |point: Point2DData| {
+                    [0.0, (point.x + 2.0) / 4.0, (point.y + 2.0) / 4.0, 1.0]
+                },
                 label_fn: |point: Point2DData| format!("{}", point),
             }],
             viewport,
-            PathBuf::from("output/fn_grid.png")
+            PathBuf::from("output/fn_grid.png"),
         );
     }
 
@@ -624,7 +628,7 @@ mod tests {
                 },
             ],
             Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(1.0, 1.0)),
-            PathBuf::from("output/layers.png")
+            PathBuf::from("output/layers.png"),
         );
     }
 
@@ -649,7 +653,7 @@ mod tests {
                 },
             ],
             Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(1.0, 1.0)),
-            PathBuf::from("output/line_width.png")
+            PathBuf::from("output/line_width.png"),
         );
     }
 
@@ -680,7 +684,6 @@ mod tests {
         );
     }
 
-
     #[test]
     fn test_points() {
         // This should render a square that's half the height of the screen, right in the middle of the
@@ -705,10 +708,9 @@ mod tests {
                 },
             ],
             Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(1.0, 1.0)),
-            PathBuf::from("output/points.png")
+            PathBuf::from("output/points.png"),
         );
     }
-
 
     // This should render a black transparent square that's half the height of the screen, right in
     // the middle of the screen.
@@ -729,7 +731,6 @@ mod tests {
         );
     }
 
-
     /// This should render some text in the center of the screen
     #[test]
     fn test_text() {
@@ -749,7 +750,7 @@ mod tests {
                 },
             ],
             Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(1.0, 1.0)),
-            PathBuf::from("output/text.png")
+            PathBuf::from("output/text.png"),
         );
     }
 

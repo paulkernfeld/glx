@@ -289,5 +289,9 @@ fn main() {
         Point2DData::new(1000.0, 1000.0),
     );
 
-    graphics::leggo(make_render(viewport), viewport, PathBuf::from("output/map.png"));
+    graphics::leggo(
+        make_render(viewport),
+        viewport,
+        PathBuf::from("output/map.png"),
+    );
 }
