@@ -75,10 +75,22 @@ enum MyPath {
     Stroked { path: Path, width: f32 },
 }
 
+// First version of a trait for rendering
 pub trait Render {
     fn styled_geoms(&self) -> Vec<StyledGeom>;
 
     fn texts(&self) -> Vec<Text>;
+}
+
+// This improved rendering trait is aware of the viewport and is responsible for clipping
+pub trait Render2 {
+    // Eh too much complexity, plus this stuff needs to fit into the graphics card memory anyways
+    // type IterGeoms: Iterator<Item=StyledGeom>;
+    // type IterTexts: Iterator<Item=Text>;
+
+    fn styled_geoms(&self, viewport: Box2DData) -> Vec<StyledGeom>;
+
+    fn texts(&self, viewport: Box2DData) -> Vec<Text>;
 }
 
 impl<L: Render, R: Render> Render for Either<L, R> {
@@ -97,9 +109,26 @@ impl<L: Render, R: Render> Render for Either<L, R> {
     }
 }
 
+impl<L: Render2, R: Render2> Render2 for Either<L, R> {
+    fn styled_geoms(&self, viewport: Box2DData) -> Vec<StyledGeom> {
+        match self {
+            Either::Left(l) => l.styled_geoms(viewport),
+            Either::Right(r) => r.styled_geoms(viewport),
+        }
+    }
+
+    fn texts(&self, viewport: Box2DData) -> Vec<Text> {
+        match self {
+            Either::Left(l) => l.texts(viewport),
+            Either::Right(r) => r.texts(viewport),
+        }
+    }
+}
+
 /// Cells are implicitly based around the origin
 pub struct FnGrid<F, G> {
-    pub viewport: Box2DData,
+    /// This is not necessary with Render2
+    pub viewport: Option<Box2DData>,
 
     /// The side length of a cell, in data space
     pub cell_size: f32,
@@ -113,10 +142,11 @@ pub struct FnGrid<F, G> {
 
 impl<F: Fn(Point2DData) -> [f32; 4], G: Fn(Point2DData) -> String> Render for FnGrid<F, G> {
     fn styled_geoms(&self) -> Vec<StyledGeom> {
-        let min_x = (self.viewport.min.x / self.cell_size).floor() as isize;
-        let min_y = (self.viewport.min.y / self.cell_size).floor() as isize;
-        let max_x = (self.viewport.max.x / self.cell_size).floor() as isize;
-        let max_y = (self.viewport.max.y / self.cell_size).floor() as isize;
+        let viewport = self.viewport.unwrap();
+        let min_x = (viewport.min.x / self.cell_size).floor() as isize;
+        let min_y = (viewport.min.y / self.cell_size).floor() as isize;
+        let max_x = (viewport.max.x / self.cell_size).floor() as isize;
+        let max_y = (viewport.max.y / self.cell_size).floor() as isize;
 
         let mut cells = vec![];
         for x in min_x..=max_x {
@@ -141,10 +171,67 @@ impl<F: Fn(Point2DData) -> [f32; 4], G: Fn(Point2DData) -> String> Render for Fn
     }
 
     fn texts(&self) -> Vec<Text> {
-        let min_x = (self.viewport.min.x / self.cell_size).floor() as isize;
-        let min_y = (self.viewport.min.y / self.cell_size).floor() as isize;
-        let max_x = (self.viewport.max.x / self.cell_size).floor() as isize;
-        let max_y = (self.viewport.max.y / self.cell_size).floor() as isize;
+        let viewport = self.viewport.unwrap();
+        let min_x = (viewport.min.x / self.cell_size).floor() as isize;
+        let min_y = (viewport.min.y / self.cell_size).floor() as isize;
+        let max_x = (viewport.max.x / self.cell_size).floor() as isize;
+        let max_y = (viewport.max.y / self.cell_size).floor() as isize;
+
+        let mut cells = vec![];
+        for x in min_x..=max_x {
+            let cell_x_min = x as f32 * self.cell_size;
+            for y in min_y..=max_y {
+                let cell_y_min = y as f32 * self.cell_size;
+                let location = Point2DData::new(
+                    cell_x_min + self.cell_size * 0.5,
+                    cell_y_min + self.cell_size * 0.5,
+                );
+                cells.push(Text {
+                    text: (self.label_fn)(location),
+                    location,
+                })
+            }
+        }
+        cells
+    }
+}
+
+impl<F: Fn(Point2DData) -> [f32; 4], G: Fn(Point2DData) -> String> Render2 for FnGrid<F, G> {
+    fn styled_geoms(&self, viewport: Box2DData) -> Vec<StyledGeom> {
+        assert_eq!(self.viewport, None);
+        let min_x = (viewport.min.x / self.cell_size).floor() as isize;
+        let min_y = (viewport.min.y / self.cell_size).floor() as isize;
+        let max_x = (viewport.max.x / self.cell_size).floor() as isize;
+        let max_y = (viewport.max.y / self.cell_size).floor() as isize;
+
+        let mut cells = vec![];
+        for x in min_x..=max_x {
+            let cell_x_min = x as f32 * self.cell_size;
+            for y in min_y..=max_y {
+                let cell_y_min = y as f32 * self.cell_size;
+                cells.push(StyledGeom {
+                    geom: Geom::Polygon(vec![
+                        Point2DData::new(cell_x_min, cell_y_min),
+                        Point2DData::new(cell_x_min + self.cell_size, cell_y_min),
+                        Point2DData::new(cell_x_min + self.cell_size, cell_y_min + self.cell_size),
+                        Point2DData::new(cell_x_min, cell_y_min + self.cell_size),
+                    ]),
+                    color: (self.color_fn)(Point2DData::new(
+                        cell_x_min + self.cell_size * 0.5,
+                        cell_y_min + self.cell_size * 0.5,
+                    )),
+                })
+            }
+        }
+        cells
+    }
+
+    fn texts(&self, viewport: Box2DData) -> Vec<Text> {
+        assert_eq!(self.viewport, None);
+        let min_x = (viewport.min.x / self.cell_size).floor() as isize;
+        let min_y = (viewport.min.y / self.cell_size).floor() as isize;
+        let max_x = (viewport.max.x / self.cell_size).floor() as isize;
+        let max_y = (viewport.max.y / self.cell_size).floor() as isize;
 
         let mut cells = vec![];
         for x in min_x..=max_x {
@@ -181,6 +268,20 @@ impl Render for StyledGeom {
     }
 }
 
+//impl Render2 for StyledGeom {
+//    fn styled_geoms(&self, viewport: Box2DData) -> Vec<StyledGeom> {
+//        if self.geom.is_in(viewport) {
+//            vec![self.clone()]
+//        } else {
+//            vec![]
+//        }
+//    }
+//
+//    fn texts(&self, viewport: Box2DData) -> Vec<Text> {
+//        vec![]
+//    }
+//}
+//
 #[derive(Clone, Debug)]
 pub struct Text {
     pub text: String,
@@ -194,6 +295,21 @@ impl Render for Text {
 
     fn texts(&self) -> Vec<Text> {
         vec![self.clone()]
+    }
+}
+
+impl Render2 for Text {
+    fn styled_geoms(&self, viewport: Box2DData) -> Vec<StyledGeom> {
+        vec![]
+    }
+
+    fn texts(&self, viewport: Box2DData) -> Vec<Text> {
+        // TODO this is wrong
+        if viewport.contains(&self.location) {
+            vec![self.clone()]
+        } else {
+            vec![]
+        }
     }
 }
 
@@ -590,7 +706,7 @@ mod tests {
         let viewport = Box2DData::new(Point2DData::new(-2.0, -2.0), Point2DData::new(2.0, 2.0));
         graphics::capture(
             vec![FnGrid {
-                viewport,
+                viewport: Some(viewport),
                 cell_size: 1.0,
                 color_fn: |point: Point2DData| {
                     [0.0, (point.x + 2.0) / 4.0, (point.y + 2.0) / 4.0, 1.0]
@@ -609,7 +725,7 @@ mod tests {
         let viewport = Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(1.0, 1.0));
         graphics::capture(
             vec![FnGrid {
-                viewport,
+                viewport: Some(viewport),
                 cell_size: 0.0005,
                 color_fn: |point: Point2DData| {
                     [0.0, (point.x + 2.0) / 4.0, (point.y + 2.0) / 4.0, 1.0]
@@ -625,7 +741,7 @@ mod tests {
     fn test_layers() {
         let viewport = Box2DData::new(Point2DData::new(-2.0, -2.0), Point2DData::new(2.0, 2.0));
         let fn_grid = FnGrid {
-            viewport,
+            viewport: Some(viewport),
             cell_size: 0.95,
             color_fn: |point: Point2DData| [0.0, (point.x + 2.0) / 4.0, (point.y + 2.0) / 4.0, 1.0],
             label_fn: |point: Point2DData| format!("{:?}", point),

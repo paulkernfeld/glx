@@ -215,7 +215,7 @@ fn make_render(viewport: Box2DData) -> impl Render {
 
     vec![
         Either::Right(FnGrid {
-            viewport,
+            viewport: Some(viewport),
             cell_size: 300.0,
             color_fn: move |point| {
                 // Using a move closure here is sort of weird. Do we really want to maintain a
