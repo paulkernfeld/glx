@@ -346,7 +346,7 @@ pub fn glsl_to_spirv(name: &str, source: &str, kind: shaderc::ShaderKind) -> Vec
 }
 
 /// Render to a PNG image with the given path
-pub fn capture<R: Render>(render: R, viewport: Box2DData, path: std::path::PathBuf) {
+pub fn capture<R: Render>(render: R, viewport: Box2DData, path: std::path::PathBuf,) {
     // Number of pixels per side in the rendered image
     let size = 2048u32;
 
@@ -599,6 +599,26 @@ mod tests {
             }],
             viewport,
             PathBuf::from("output/fn_grid.png"),
+            1
+        );
+    }
+
+    /// This grid is designed to be too be large to naively render on my graphics card
+    #[test]
+    fn test_fn_grid_many() {
+        let viewport = Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(1.0, 1.0));
+        graphics::capture(
+            vec![FnGrid {
+                viewport,
+                cell_size: 0.0005,
+                color_fn: |point: Point2DData| {
+                    [0.0, (point.x + 2.0) / 4.0, (point.y + 2.0) / 4.0, 1.0]
+                },
+                label_fn: |point: Point2DData| String::from(""),
+            }],
+            viewport,
+            PathBuf::from("output/fn_grid_many.png"),
+            1
         );
     }
 
@@ -633,6 +653,7 @@ mod tests {
             ],
             Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(1.0, 1.0)),
             PathBuf::from("output/layers.png"),
+            1
         );
     }
 
@@ -658,6 +679,7 @@ mod tests {
             ],
             Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(1.0, 1.0)),
             PathBuf::from("output/line_width.png"),
+            1
         );
     }
 
@@ -685,6 +707,7 @@ mod tests {
                 .collect::<Vec<_>>(),
             Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(1.0, 1.0)),
             PathBuf::from("output/lines.png"),
+            1
         );
     }
 
@@ -713,6 +736,7 @@ mod tests {
             ],
             Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(1.0, 1.0)),
             PathBuf::from("output/points.png"),
+            1
         );
     }
 
@@ -732,6 +756,7 @@ mod tests {
             }],
             Box2DData::new(Point2DData::new(0.0, 0.0), Point2DData::new(1.0, 1.0)),
             PathBuf::from("output/square.png"),
+            1
         );
     }
 
@@ -755,6 +780,7 @@ mod tests {
             ],
             Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(1.0, 1.0)),
             PathBuf::from("output/text.png"),
+            1
         );
     }
 
