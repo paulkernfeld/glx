@@ -24,8 +24,8 @@ pub fn scale_temperature(mut scalar: f32, n_chunks: f32) -> [f32; 4] {
     let chroma = 90.0;
     match Srgb::from(
         Gradient::new(vec![
-            Lch::new(lightness, chroma, 280.0),
             Lch::new(lightness, chroma, 60.0),
+            Lch::new(lightness, chroma, 280.0),
         ])
         .get(scalar),
     )
@@ -402,7 +402,7 @@ fn create_vertices(
     let mut fill_tessellator = FillTessellator::new();
     let mut stroke_tessellator = StrokeTessellator::new();
 
-    let tolerance = 0.0001;
+    let tolerance = 0.1;
     let fill_options = FillOptions::DEFAULT
         .with_normals(false)
         .with_tolerance(tolerance);
@@ -453,7 +453,7 @@ use wgpu_glyph::{GlyphBrushBuilder, HorizontalAlign, Layout, Scale, Section, Ver
 /// Render to a PNG image with the given path
 pub fn capture<R: Render>(render: R, viewport: Box2DData, path: std::path::PathBuf) {
     // Number of pixels per side in the rendered image
-    let size = 2048u32;
+    let size = 4096u32;
 
     debug!("Initializing WGPU...");
     let instance = wgpu::Instance::new();

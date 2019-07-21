@@ -148,7 +148,8 @@ fn make_render(viewport: Box2DData) -> impl Render {
 
     info!("{} ways loaded from OSM", ways.len());
 
-    let color_object = 0.5;
+    let color_object = 1.0;
+    let alpha_object = 1.0;
 
     // Popular tags: https://taginfo.openstreetmap.org/tags
     let osm_styled_geoms: Vec<_> = ways
@@ -159,7 +160,7 @@ fn make_render(viewport: Box2DData) -> impl Render {
                 .map(|node| dense_node_to_x_y(&node, centroid))
                 .collect();
             if way.tags.contains_key("building") {
-                let color = [color_object, color_object, color_object, 0.7];
+                let color = [color_object, color_object, color_object, alpha_object];
                 Some(StyledGeom {
                     geom: Geom::Polygon(nodes),
                     color,
@@ -196,7 +197,7 @@ fn make_render(viewport: Box2DData) -> impl Render {
                         points: nodes,
                         width,
                     },
-                    color: [color_object, color_object, color_object, 0.7],
+                    color: [color_object, color_object, color_object, alpha_object],
                 })
             } else {
                 None
@@ -229,7 +230,7 @@ fn make_render(viewport: Box2DData) -> impl Render {
                     MbtaLine::Red => [217.0 / 255.0, 37.0 / 255.0, 10.0 / 255.0, 1.0],
                 };
 
-                scale_temperature(1.0 - (best_after.time - 10.0) / 40.0, 6.0)
+                scale_temperature(1.0 - (best_after.time - 10.0) / 40.0, 8.0)
             },
             label_fn: move |point| {
                 let best_after = best_station(&stations_2, point);
@@ -286,8 +287,8 @@ fn main() {
     info!("Entering script...");
 
     let viewport = Box2DData::new(
-        Point2DData::new(-1000.0, -1000.0),
-        Point2DData::new(1000.0, 1000.0),
+        Point2DData::new(-3000.0, -3000.0),
+        Point2DData::new(3000.0, 3000.0),
     );
 
     graphics::capture(
