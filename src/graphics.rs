@@ -815,6 +815,22 @@ mod tests {
         );
     }
 
+    #[test]
+    fn test_fn_grid_lots() {
+        let viewport = Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(1.0, 1.0));
+        graphics::capture(
+            vec![FnGrid {
+                viewport: Some(viewport),
+                cell_size: 0.5,
+                color_fn: |point: Point2DData| [0.0, point.x, point.y, 1.0],
+                label_fn: |point: Point2DData| String::from(","),
+            }],
+            viewport,
+            PathBuf::from("output/fn_grid_lots.png"),
+            SIZE,
+        );
+    }
+
     /// This grid is designed to be too be large to naively render on my graphics card
     #[test]
     #[ignore]
@@ -835,30 +851,36 @@ mod tests {
 
     #[test]
     fn test_layers() {
+        let viewport = Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(1.0, 1.0));
+        let render: Vec<Box<dyn Render>> = vec![
+            Box::new(StyledGeom {
+                geom: Geom::from_box2d(&viewport),
+                color: [1.0, 0.0, 0.0, 1.0],
+            }),
+            Box::new(Legend {
+                title: String::from("Background"),
+                series: (0..10)
+                    .map(|i| Series {
+                        title: format!("Series {}", i),
+                        color: [0.0, 0.0, i as f32 / 9.0, 1.0],
+                    })
+                    .collect(),
+                area: Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(0.5, 0.5)),
+            }),
+            Box::new(Legend {
+                title: String::from("Foreground"),
+                series: (0..10)
+                    .map(|i| Series {
+                        title: format!("Series {}", i),
+                        color: [0.0, i as f32 / 9.0, 0.0, 1.0],
+                    })
+                    .collect(),
+                area: Box2DData::new(Point2DData::new(-0.5, -0.5), Point2DData::new(1.0, 1.0)),
+            }),
+        ];
         graphics::capture(
-            vec![
-                Legend {
-                    title: String::from("Background"),
-                    series: (0..10)
-                        .map(|i| Series {
-                            title: format!("Series {}", i),
-                            color: [0.0, 0.0, i as f32 / 9.0, 1.0],
-                        })
-                        .collect(),
-                    area: Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(0.5, 0.5)),
-                },
-                Legend {
-                    title: String::from("Foreground"),
-                    series: (0..10)
-                        .map(|i| Series {
-                            title: format!("Series {}", i),
-                            color: [0.0, i as f32 / 9.0, 0.0, 1.0],
-                        })
-                        .collect(),
-                    area: Box2DData::new(Point2DData::new(-0.5, -0.5), Point2DData::new(1.0, 1.0)),
-                },
-            ],
-            Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(1.0, 1.0)),
+            render,
+            viewport,
             PathBuf::from("output/layers.png"),
             SIZE,
         );

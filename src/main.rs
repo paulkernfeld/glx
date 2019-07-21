@@ -132,8 +132,8 @@ fn main() {
     info!("Entering script...");
 
     let viewport = Box2DData::new(
-        Point2DData::new(-3000.0, -3000.0),
-        Point2DData::new(3000.0, 3000.0),
+        Point2DData::new(1500.0, -3000.0),
+        Point2DData::new(3000.0, -1500.0),
     );
 
     // Somerville city hall (93 Highland)
