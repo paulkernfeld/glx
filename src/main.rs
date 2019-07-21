@@ -1,7 +1,6 @@
 extern crate env_logger;
 extern crate wgpu;
 
-use either::Either;
 use log::*;
 use std::collections::HashMap;
 
@@ -87,7 +86,56 @@ fn best_station(stations: &[Station], location_x_y: Point2DData) -> BestStation 
     }
 }
 
-fn make_render(viewport: Box2DData) -> impl Render {
+#[cfg(test)]
+mod tests {
+    use crate::*;
+
+    #[test]
+    fn test_load_stations() {
+        let stations = load_stations(geo_types::Point::new(42.386755, -71.098472));
+
+        let station: &Station = stations
+            .iter()
+            .find(|station| station.name == "Gilman")
+            .unwrap();
+
+        assert!(
+            station.location_x_y.to_vector().length() < 500.0,
+            "Gilman is pretty close to city hall"
+        );
+        assert!(
+            station.location_x_y.to_vector().length() > 100.0,
+            "Gilman is not THAT close to city hall"
+        );
+        assert_eq!(station.minutes_to_ps_dtx, 19.0);
+    }
+
+    #[test]
+    fn test_best_station() {
+        let stations = load_stations(geo_types::Point::new(42.386755, -71.098472));
+
+        let best_station: BestStation = best_station(&stations, Point2DData::new(0.0, 0.0));
+
+        assert_eq!(
+            best_station.station.name, "Gilman",
+            "Gilman is closest to city hall"
+        );
+
+        assert!(best_station.time > 20.0);
+        assert!(best_station.time < 25.0);
+    }
+}
+
+fn main() {
+    env_logger::init();
+
+    info!("Entering script...");
+
+    let viewport = Box2DData::new(
+        Point2DData::new(-3000.0, -3000.0),
+        Point2DData::new(3000.0, 3000.0),
+    );
+
     // Somerville city hall (93 Highland)
     let centroid: geo_types::Point<f32> = geo_types::Point::new(42.386755, -71.098472);
 
@@ -214,8 +262,12 @@ fn make_render(viewport: Box2DData) -> impl Render {
 
     let stations_2 = stations.clone();
 
-    vec![
-        Either::Right(FnGrid {
+    let n_zones = 8;
+
+    let time_to_color = |time| scale_temperature(1.0 - (time - 10.0) / 40.0, n_zones as f32);
+
+    let render: Vec<Box<Render>> = vec![
+        Box::new(FnGrid {
             viewport: Some(viewport),
             cell_size: 300.0,
             color_fn: move |point| {
@@ -230,71 +282,31 @@ fn make_render(viewport: Box2DData) -> impl Render {
                     MbtaLine::Red => [217.0 / 255.0, 37.0 / 255.0, 10.0 / 255.0, 1.0],
                 };
 
-                scale_temperature(1.0 - (best_after.time - 10.0) / 40.0, 8.0)
+                time_to_color(best_after.time)
             },
             label_fn: move |point| {
                 let best_after = best_station(&stations_2, point);
                 format!("{}", best_after.time as usize)
             },
         }),
-        Either::Left(osm_styled_geoms),
-    ]
-}
+        Box::new(osm_styled_geoms),
+        Box::new(Legend {
+            title: String::from("Time to Downtown Boston"),
+            series: (0..n_zones)
+                .map(|i| {
+                    let time = 10.0 + (i as f32 + 0.5) * (40.0 - 10.0) / n_zones as f32;
+                    Series {
+                        title: format!("{}", time),
+                        color: time_to_color(time),
+                    }
+                })
+                .collect(),
+            area: Box2DData::new(
+                Point2DData::new(1500.0, -3000.0),
+                Point2DData::new(3000.0, -1500.0),
+            ),
+        }),
+    ];
 
-#[cfg(test)]
-mod tests {
-    use crate::*;
-
-    #[test]
-    fn test_load_stations() {
-        let stations = load_stations(geo_types::Point::new(42.386755, -71.098472));
-
-        let station: &Station = stations
-            .iter()
-            .find(|station| station.name == "Gilman")
-            .unwrap();
-
-        assert!(
-            station.location_x_y.to_vector().length() < 500.0,
-            "Gilman is pretty close to city hall"
-        );
-        assert!(
-            station.location_x_y.to_vector().length() > 100.0,
-            "Gilman is not THAT close to city hall"
-        );
-        assert_eq!(station.minutes_to_ps_dtx, 19.0);
-    }
-
-    #[test]
-    fn test_best_station() {
-        let stations = load_stations(geo_types::Point::new(42.386755, -71.098472));
-
-        let best_station: BestStation = best_station(&stations, Point2DData::new(0.0, 0.0));
-
-        assert_eq!(
-            best_station.station.name, "Gilman",
-            "Gilman is closest to city hall"
-        );
-
-        assert!(best_station.time > 20.0);
-        assert!(best_station.time < 25.0);
-    }
-}
-
-fn main() {
-    env_logger::init();
-
-    info!("Entering script...");
-
-    let viewport = Box2DData::new(
-        Point2DData::new(-3000.0, -3000.0),
-        Point2DData::new(3000.0, 3000.0),
-    );
-
-    graphics::capture(
-        make_render(viewport),
-        viewport,
-        PathBuf::from("output/map.png"),
-        4096,
-    );
+    graphics::capture(render, viewport, PathBuf::from("output/map.png"), 4096);
 }

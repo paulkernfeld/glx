@@ -108,6 +108,16 @@ impl<L: Render, R: Render> Render for Either<L, R> {
     }
 }
 
+impl<T: Render + ?Sized> Render for Box<T> {
+    fn styled_geoms(&self) -> Vec<StyledGeom> {
+        self.as_ref().styled_geoms()
+    }
+
+    fn texts(&self) -> Vec<Text> {
+        self.as_ref().texts()
+    }
+}
+
 impl<L: Render2, R: Render2> Render2 for Either<L, R> {
     fn styled_geoms(&self, viewport: Box2DData) -> Vec<StyledGeom> {
         match self {
@@ -268,30 +278,30 @@ impl Render for StyledGeom {
 }
 
 pub struct Series {
-    title: String,
-    color: [f32; 4],
+    pub title: String,
+    pub color: [f32; 4],
 }
 
 pub struct Legend {
-    title: String,
-    series: Vec<Series>,
+    pub title: String,
+    pub series: Vec<Series>,
     /// In data space, unfortunately. Should this eventually be in screen space or -1..1 space?
-    area: Box2DData,
+    pub area: Box2DData,
 }
 
 impl Render for Legend {
     fn styled_geoms(&self) -> Vec<StyledGeom> {
         let mut styled_geoms = vec![StyledGeom {
             geom: Geom::from_box2d(&self.area),
-            color: [1.0, 1.0, 1.0, 1.0],
+            color: [0.5, 0.5, 1.0, 1.0],
         }];
 
         let serieses = Box2DData::new(
-            Point2DData::new(self.area.min.x, self.area.min.y * 0.75 + self.area.max.y * 0.25),
             Point2DData::new(
-                self.area.max.x,
-                self.area.max.y,
+                self.area.min.x,
+                self.area.min.y * 0.75 + self.area.max.y * 0.25,
             ),
+            Point2DData::new(self.area.max.x, self.area.max.y),
         );
 
         for (series, series_box) in self
@@ -318,23 +328,23 @@ impl Render for Legend {
         }];
 
         let serieses = Box2DData::new(
-            Point2DData::new(self.area.min.x, self.area.min.y * 0.75 + self.area.max.y * 0.25),
             Point2DData::new(
-                self.area.max.x,
-                self.area.max.y,
+                self.area.min.x,
+                self.area.min.y * 0.75 + self.area.max.y * 0.25,
             ),
+            Point2DData::new(self.area.max.x, self.area.max.y),
         );
 
         for (series, series_box) in self
             .series
             .iter()
             .zip(slice_box2d(serieses, self.series.len()))
-            {
-                texts.push(Text {
-                    text: series.title.clone(),
-                    location: series_box.center(),
-                })
-            }
+        {
+            texts.push(Text {
+                text: series.title.clone(),
+                location: series_box.center(),
+            })
+        }
 
         texts
     }
@@ -548,6 +558,7 @@ fn create_vertices(
 }
 
 use self::wgpu::TextureFormat;
+use core::borrow::Borrow;
 use log::info;
 use std::cmp::min;
 use wgpu_glyph::{GlyphBrushBuilder, HorizontalAlign, Layout, Scale, Section, VerticalAlign};
@@ -726,6 +737,7 @@ pub fn capture<R: Render>(render: R, viewport: Box2DData, path: std::path::PathB
                 layout: Layout::default_single_line()
                     .h_align(HorizontalAlign::Center)
                     .v_align(VerticalAlign::Center),
+//                z: 2.0,  // Put it in foreground
                 ..Section::default()
             });
         }
@@ -821,31 +833,27 @@ mod tests {
 
     #[test]
     fn test_layers() {
-        let viewport = Box2DData::new(Point2DData::new(-2.0, -2.0), Point2DData::new(2.0, 2.0));
-        let fn_grid = FnGrid {
-            viewport: Some(viewport),
-            cell_size: 0.95,
-            color_fn: |point: Point2DData| [0.0, (point.x + 2.0) / 4.0, (point.y + 2.0) / 4.0, 1.0],
-            label_fn: |point: Point2DData| format!("{:?}", point),
-        };
-
         graphics::capture(
             vec![
-                StyledGeom {
-                    geom: Geom::Point(Point2DData::new(-0.5, -0.5)),
-                    color: [1.0, 1.0, 0.0, 1.0],
+                Legend {
+                    title: String::from("Background"),
+                    series: (0..10)
+                        .map(|i| Series {
+                            title: format!("Series {}", i),
+                            color: [0.0, 0.0, i as f32 / 9.0, 1.0],
+                        })
+                        .collect(),
+                    area: Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(0.5, 0.5)),
                 },
-                StyledGeom {
-                    geom: Geom::Point(Point2DData::new(0.5, -0.5)),
-                    color: [1.0, 0.0, 1.0, 1.0],
-                },
-                StyledGeom {
-                    geom: Geom::Point(Point2DData::new(0.5, 0.5)),
-                    color: [0.0, 1.0, 1.0, 1.0],
-                },
-                StyledGeom {
-                    geom: Geom::Point(Point2DData::new(-0.5, 0.5)),
-                    color: [0.5, 0.5, 0.5, 1.0],
+                Legend {
+                    title: String::from("Foreground"),
+                    series: (0..10)
+                        .map(|i| Series {
+                            title: format!("Series {}", i),
+                            color: [0.0, i as f32 / 9.0, 0.0, 1.0],
+                        })
+                        .collect(),
+                    area: Box2DData::new(Point2DData::new(-0.5, -0.5), Point2DData::new(1.0, 1.0)),
                 },
             ],
             Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(1.0, 1.0)),
@@ -875,7 +883,7 @@ mod tests {
 
     #[test]
     fn test_line_width() {
-        // This should show two lines that are exactly as wide as they are long, i.e. squares
+        // This should show two cyan lines that are exactly as wide as they are long, i.e. squares
         graphics::capture(
             vec![
                 StyledGeom {
@@ -883,14 +891,14 @@ mod tests {
                         points: vec![Point2DData::new(-1.0, -0.5), Point2DData::new(0.0, -0.5)],
                         width: 1.0,
                     },
-                    color: [1.0, 0.0, 1.0, 1.0],
+                    color: [0.0, 1.0, 1.0, 1.0],
                 },
                 StyledGeom {
                     geom: Geom::Lines {
                         points: vec![Point2DData::new(0.5, 0.0), Point2DData::new(0.5, 1.0)],
                         width: 1.0,
                     },
-                    color: [1.0, 0.0, 1.0, 1.0],
+                    color: [0.0, 1.0, 1.0, 1.0],
                 },
             ],
             Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(1.0, 1.0)),
