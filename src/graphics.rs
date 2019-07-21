@@ -20,12 +20,12 @@ use palette::{Gradient, Lch, Srgb};
 /// This scale has high distinguishability.
 pub fn scale_temperature(mut scalar: f32, n_chunks: f32) -> [f32; 4] {
     scalar = (scalar * n_chunks).floor() / (n_chunks - 1.0);
-    let lightness = 70.0;
-    let chroma = 90.0;
+    let lightness = 60.0;
+    let chroma = 80.0;
     match Srgb::from(
         Gradient::new(vec![
-            Lch::new(lightness, chroma, 60.0),
             Lch::new(lightness, chroma, 280.0),
+            Lch::new(lightness, chroma, 60.0),
         ])
         .get(scalar),
     )
@@ -579,6 +579,8 @@ pub fn capture<R: Render>(render: R, viewport: Box2DData, path: std::path::PathB
         limits: wgpu::Limits::default(),
     });
 
+    let texture_format = TextureFormat::Rgba8UnormSrgb;
+
     let vs_bytes = Vec::from(include_bytes!("spirv/vert.spirv") as &[u8]);
     let fs_bytes = Vec::from(include_bytes!("spirv/frag.spirv") as &[u8]);
 
@@ -631,7 +633,7 @@ pub fn capture<R: Render>(render: R, viewport: Box2DData, path: std::path::PathB
         },
         primitive_topology: wgpu::PrimitiveTopology::TriangleList,
         color_states: &[wgpu::ColorStateDescriptor {
-            format: wgpu::TextureFormat::Bgra8Unorm,
+            format: texture_format,
             color_blend: wgpu::BlendDescriptor {
                 src_factor: wgpu::BlendFactor::SrcAlpha,
                 dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
@@ -684,7 +686,7 @@ pub fn capture<R: Render>(render: R, viewport: Box2DData, path: std::path::PathB
         mip_level_count: 1,
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
-        format: wgpu::TextureFormat::Bgra8Unorm,
+        format: texture_format,
         usage: wgpu::TextureUsage::STORAGE,
     });
     let texture_view = texture.create_default_view();
@@ -701,7 +703,7 @@ pub fn capture<R: Render>(render: R, viewport: Box2DData, path: std::path::PathB
     let font: &[u8] =
         include_bytes!("font/cooper-hewitt-fixed-for-windows-master/CooperHewitt-Semibold.ttf");
     let mut glyph_brush =
-        GlyphBrushBuilder::using_font_bytes(font).build(&mut device, TextureFormat::Bgra8Unorm);
+        GlyphBrushBuilder::using_font_bytes(font).build(&mut device, texture_format);
 
     let command_buffer = {
         let mut encoder =

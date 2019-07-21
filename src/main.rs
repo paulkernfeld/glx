@@ -262,7 +262,7 @@ fn main() {
 
     let stations_2 = stations.clone();
 
-    let n_zones = 8;
+    let n_zones = 6;
 
     let time_to_color = |time| scale_temperature(1.0 - (time - 10.0) / 40.0, n_zones as f32);
 
