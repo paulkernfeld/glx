@@ -267,6 +267,96 @@ impl Render for StyledGeom {
     }
 }
 
+pub struct Series {
+    title: String,
+    color: [f32; 4],
+}
+
+pub struct Legend {
+    title: String,
+    series: Vec<Series>,
+    /// In data space, unfortunately. Should this eventually be in screen space or -1..1 space?
+    area: Box2DData,
+}
+
+impl Render for Legend {
+    fn styled_geoms(&self) -> Vec<StyledGeom> {
+        let mut styled_geoms = vec![StyledGeom {
+            geom: Geom::from_box2d(&self.area),
+            color: [1.0, 1.0, 1.0, 1.0],
+        }];
+
+        let serieses = Box2DData::new(
+            Point2DData::new(self.area.min.x, self.area.min.y * 0.75 + self.area.max.y * 0.25),
+            Point2DData::new(
+                self.area.max.x,
+                self.area.max.y,
+            ),
+        );
+
+        for (series, series_box) in self
+            .series
+            .iter()
+            .zip(slice_box2d(serieses, self.series.len()))
+        {
+            styled_geoms.push(StyledGeom {
+                geom: Geom::from_box2d(&series_box),
+                color: series.color,
+            });
+        }
+
+        styled_geoms
+    }
+
+    fn texts(&self) -> Vec<Text> {
+        let mut texts = vec![Text {
+            text: self.title.clone(),
+            location: Point2DData::new(
+                self.area.min.x * 0.5 + self.area.max.x * 0.5,
+                self.area.min.y * 0.9 + self.area.max.y * 0.1,
+            ),
+        }];
+
+        let serieses = Box2DData::new(
+            Point2DData::new(self.area.min.x, self.area.min.y * 0.75 + self.area.max.y * 0.25),
+            Point2DData::new(
+                self.area.max.x,
+                self.area.max.y,
+            ),
+        );
+
+        for (series, series_box) in self
+            .series
+            .iter()
+            .zip(slice_box2d(serieses, self.series.len()))
+            {
+                texts.push(Text {
+                    text: series.title.clone(),
+                    location: series_box.center(),
+                })
+            }
+
+        texts
+    }
+}
+
+fn slice_box2d(box2d: Box2DData, n_slices: usize) -> impl Iterator<Item = Box2DData> {
+    (0..n_slices).map(move |i| {
+        let ratio_min = i as f32 / n_slices as f32;
+        let ratio_max = ((i as f32) + 1.0) / n_slices as f32;
+        Box2DData::new(
+            Point2DData::new(
+                box2d.min.x,
+                box2d.min.y * (1.0 - ratio_min) + box2d.max.y * ratio_min,
+            ),
+            Point2DData::new(
+                box2d.max.x,
+                box2d.min.y * (1.0 - ratio_max) + box2d.max.y * ratio_max,
+            ),
+        )
+    })
+}
+
 //impl Render2 for StyledGeom {
 //    fn styled_geoms(&self, viewport: Box2DData) -> Vec<StyledGeom> {
 //        if self.geom.is_in(viewport) {
@@ -332,6 +422,17 @@ pub enum Geom {
     },
     Polygon(Vec<Point2DData>), // don't repeat the first point
                                //    Text(String), // This seems def. not a geom in the tidy data sense
+}
+
+impl Geom {
+    fn from_box2d(box2d: &Box2DData) -> Self {
+        Geom::Polygon(vec![
+            Point2DData::new(box2d.min.x, box2d.min.y),
+            Point2DData::new(box2d.max.x, box2d.min.y),
+            Point2DData::new(box2d.max.x, box2d.max.y),
+            Point2DData::new(box2d.min.x, box2d.max.y),
+        ])
+    }
 }
 
 pub enum PointStyle {
@@ -448,13 +549,11 @@ fn create_vertices(
 
 use self::wgpu::TextureFormat;
 use log::info;
+use std::cmp::min;
 use wgpu_glyph::{GlyphBrushBuilder, HorizontalAlign, Layout, Scale, Section, VerticalAlign};
 
 /// Render to a PNG image with the given path
-pub fn capture<R: Render>(render: R, viewport: Box2DData, path: std::path::PathBuf) {
-    // Number of pixels per side in the rendered image
-    let size = 4096u32;
-
+pub fn capture<R: Render>(render: R, viewport: Box2DData, path: std::path::PathBuf, size: u32) {
     debug!("Initializing WGPU...");
     let instance = wgpu::Instance::new();
 
@@ -682,6 +781,8 @@ mod tests {
     use log::*;
     use std::path::PathBuf;
 
+    const SIZE: u32 = 256;
+
     #[test]
     fn test_fn_grid() {
         let viewport = Box2DData::new(Point2DData::new(-2.0, -2.0), Point2DData::new(2.0, 2.0));
@@ -696,6 +797,7 @@ mod tests {
             }],
             viewport,
             PathBuf::from("output/fn_grid.png"),
+            SIZE,
         );
     }
 
@@ -713,6 +815,7 @@ mod tests {
             }],
             viewport,
             PathBuf::from("output/fn_grid_many.png"),
+            SIZE,
         );
     }
 
@@ -747,6 +850,26 @@ mod tests {
             ],
             Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(1.0, 1.0)),
             PathBuf::from("output/layers.png"),
+            SIZE,
+        );
+    }
+
+    #[test]
+    fn test_legend() {
+        graphics::capture(
+            Legend {
+                title: String::from("Legend"),
+                series: (0..10)
+                    .map(|i| Series {
+                        title: format!("Series {}", i),
+                        color: [0.0, 0.0, i as f32 / 9.0, 1.0],
+                    })
+                    .collect(),
+                area: Box2DData::new(Point2DData::new(-0.5, -0.5), Point2DData::new(0.5, 0.5)),
+            },
+            Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(1.0, 1.0)),
+            PathBuf::from("output/legend.png"),
+            SIZE,
         );
     }
 
@@ -772,6 +895,7 @@ mod tests {
             ],
             Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(1.0, 1.0)),
             PathBuf::from("output/line_width.png"),
+            SIZE,
         );
     }
 
@@ -799,6 +923,7 @@ mod tests {
                 .collect::<Vec<_>>(),
             Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(1.0, 1.0)),
             PathBuf::from("output/lines.png"),
+            SIZE,
         );
     }
 
@@ -827,6 +952,7 @@ mod tests {
             ],
             Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(1.0, 1.0)),
             PathBuf::from("output/points.png"),
+            SIZE,
         );
     }
 
@@ -846,6 +972,7 @@ mod tests {
             }],
             Box2DData::new(Point2DData::new(0.0, 0.0), Point2DData::new(1.0, 1.0)),
             PathBuf::from("output/square.png"),
+            SIZE,
         );
     }
 
@@ -869,7 +996,23 @@ mod tests {
             ],
             Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(1.0, 1.0)),
             PathBuf::from("output/text.png"),
+            SIZE,
         );
     }
 
+    #[test]
+    fn test_slice_box2d() {
+        let expected = vec![
+            Box2DData::new(Point2DData::new(1.0, 2.0), Point2DData::new(3.0, 3.0)),
+            Box2DData::new(Point2DData::new(1.0, 3.0), Point2DData::new(3.0, 4.0)),
+        ];
+        assert_eq!(
+            expected,
+            slice_box2d(
+                Box2DData::new(Point2DData::new(1.0, 2.0), Point2DData::new(3.0, 4.0)),
+                2
+            )
+            .collect::<Vec<Box2DData>>()
+        );
+    }
 }

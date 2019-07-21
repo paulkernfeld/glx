@@ -295,5 +295,6 @@ fn main() {
         make_render(viewport),
         viewport,
         PathBuf::from("output/map.png"),
+        4096,
     );
 }
