@@ -1,7 +1,6 @@
 use log::*;
 
-extern crate env_logger;
-extern crate wgpu;
+use env_logger;
 
 use either::Either;
 use euclid::{Point2D, TypedPoint2D};
@@ -557,7 +556,6 @@ fn create_vertices(
     (geometry.vertices, geometry.indices)
 }
 
-use self::wgpu::TextureFormat;
 use core::borrow::Borrow;
 use log::info;
 use std::cmp::min;
@@ -579,7 +577,7 @@ pub fn capture<R: Render>(render: R, viewport: Box2DData, path: std::path::PathB
         limits: wgpu::Limits::default(),
     });
 
-    let texture_format = TextureFormat::Rgba8UnormSrgb;
+    let texture_format = wgpu::TextureFormat::Rgba8UnormSrgb;
 
     let vs_bytes = Vec::from(include_bytes!("spirv/vert.spirv") as &[u8]);
     let fs_bytes = Vec::from(include_bytes!("spirv/frag.spirv") as &[u8]);
