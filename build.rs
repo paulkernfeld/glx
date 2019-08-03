@@ -3,7 +3,7 @@ extern crate protoc_rust;
 use shaderc;
 
 use protoc_rust::Customize;
-use std::fs::File;
+use std::fs::{create_dir, remove_dir_all, File};
 use std::io::Write;
 
 pub fn glsl_to_spirv(name: &str, source: &str, kind: shaderc::ShaderKind) -> Vec<u8> {
@@ -17,6 +17,8 @@ pub fn glsl_to_spirv(name: &str, source: &str, kind: shaderc::ShaderKind) -> Vec
 }
 
 fn main() {
+    remove_dir_all("src/spirv").unwrap();
+    create_dir("src/spirv").unwrap();
     File::create("src/spirv/vert.spirv")
         .unwrap()
         .write(&glsl_to_spirv(

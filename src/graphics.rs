@@ -74,6 +74,7 @@ enum MyPath {
     Stroked { path: Path, width: f32 },
 }
 
+#[derive(Debug)]
 pub struct Z<T> {
     t: T,
     z: f32,
@@ -419,6 +420,18 @@ impl<R: Render> Render for Vec<R> {
     }
 }
 
+pub struct Layers<R>(Vec<R>);
+
+impl<R: Render> Render for Layers<R> {
+    fn styled_geoms(&self, z_0: f32) -> Vec<Z<StyledGeom>> {
+        self.0.iter().enumerate().flat_map(|(i, r)| r.styled_geoms(z_0 + i as f32 * 0.001)).collect()
+    }
+
+    fn texts(&self, z_0: f32) -> Vec<Z<Text>> {
+        self.0.iter().enumerate().flat_map(|(i, r)| r.texts(z_0 + i as f32 * 0.001)).collect()
+    }
+}
+
 /// This attempts to represent the underlying data
 #[derive(Clone, Debug)]
 pub enum Geom {
@@ -525,8 +538,8 @@ fn create_vertices(
                         &fill_options,
                         &mut BuffersBuilder::new(&mut geometry, |vertex: FillVertex| Vertex {
                             _pos: [vertex.position.x, vertex.position.y],
-                            _z: z_styled_geom.z,
                             _color: z_styled_geom.t.color,
+                            _z: z_styled_geom.z,
                         }),
                     )
                     .unwrap();
@@ -538,8 +551,8 @@ fn create_vertices(
                         &stroke_options.with_line_width(width),
                         &mut BuffersBuilder::new(&mut geometry, |vertex: StrokeVertex| Vertex {
                             _pos: [vertex.position.x, vertex.position.y],
-                            _z: z_styled_geom.z,
                             _color: z_styled_geom.t.color,
+                            _z: z_styled_geom.z,
                         }),
                     )
                     .unwrap();
@@ -578,6 +591,7 @@ pub fn capture<R: Render>(render: R, viewport: Box2DData, path: std::path::PathB
     });
 
     let texture_format = wgpu::TextureFormat::Rgba8UnormSrgb;
+    let depth_format = wgpu::TextureFormat::D32Float;
 
     let vs_bytes = Vec::from(include_bytes!("spirv/vert.spirv") as &[u8]);
     let fs_bytes = Vec::from(include_bytes!("spirv/frag.spirv") as &[u8]);
@@ -645,7 +659,15 @@ pub fn capture<R: Render>(render: R, viewport: Box2DData, path: std::path::PathB
             },
             write_mask: wgpu::ColorWrite::ALL,
         }],
-        depth_stencil_state: None,
+        depth_stencil_state: Some(wgpu::DepthStencilStateDescriptor {
+            format: depth_format,
+            depth_write_enabled: true,
+            depth_compare: wgpu::CompareFunction::LessEqual,
+            stencil_front: wgpu::StencilStateFaceDescriptor::IGNORE,
+            stencil_back: wgpu::StencilStateFaceDescriptor::IGNORE,
+            stencil_read_mask: 0,
+            stencil_write_mask: 0,
+        }),
         index_format: wgpu::IndexFormat::Uint32,
         vertex_buffers: &[wgpu::VertexBufferDescriptor {
             stride: vertex_size as u64,
@@ -663,7 +685,7 @@ pub fn capture<R: Render>(render: R, viewport: Box2DData, path: std::path::PathB
                 },
                 wgpu::VertexAttributeDescriptor {
                     format: wgpu::VertexFormat::Float,
-                    offset: 16, // Because this is preceded by 4x4-byte float?
+                    offset: 8 + 16, // Because this is preceded by 4x4-byte float?
                     shader_location: 2,
                 },
             ],
@@ -682,6 +704,18 @@ pub fn capture<R: Render>(render: R, viewport: Box2DData, path: std::path::PathB
         height: size,
         depth: 1,
     };
+
+    // This texture seems to be used for depth testing
+    let depth_texture = device.create_texture(&wgpu::TextureDescriptor {
+        size: texture_extent,
+        array_layer_count: 1,
+        mip_level_count: 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: depth_format,
+        usage: wgpu::TextureUsage::OUTPUT_ATTACHMENT,
+    });
+    let depth_view = depth_texture.create_default_view();
 
     // The render pipeline renders data into this texture
     let texture = device.create_texture(&wgpu::TextureDescriptor {
@@ -723,7 +757,15 @@ pub fn capture<R: Render>(render: R, viewport: Box2DData, path: std::path::PathB
                     store_op: wgpu::StoreOp::Store,
                     clear_color: wgpu::Color::WHITE,
                 }],
-                depth_stencil_attachment: None,
+                depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachmentDescriptor {
+                    attachment: &depth_view,
+                    depth_load_op: wgpu::LoadOp::Clear,
+                    depth_store_op: wgpu::StoreOp::Store,
+                    stencil_load_op: wgpu::LoadOp::Clear,
+                    stencil_store_op: wgpu::StoreOp::Store,
+                    clear_depth: 1.0,
+                    clear_stencil: 0,
+                }),
             });
             rpass.set_pipeline(&render_pipeline);
             rpass.set_bind_group(0, &bind_group, &[]);
@@ -857,7 +899,7 @@ mod tests {
     #[test]
     fn test_layers() {
         let viewport = Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(1.0, 1.0));
-        let render: Vec<Box<dyn Render>> = vec![
+        let render: Layers<Box<dyn Render>> = Layers(vec![
             Box::new(StyledGeom {
                 geom: Geom::from_box2d(&Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(0.5, 0.5))),
                 color: [1.0, 0.0, 0.0, 1.0],
@@ -878,7 +920,7 @@ mod tests {
                 geom: Geom::from_box2d(&Box2DData::new(Point2DData::new(-0.5, -0.5), Point2DData::new(0.5, 0.5))),
                 color: [0.0, 0.0, 1.0, 1.0],
             }),
-        ];
+        ]);
         graphics::capture(
             render,
             viewport,
@@ -891,7 +933,7 @@ mod tests {
     #[test]
     fn test_layers_text_on_top() {
         let viewport = Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(1.0, 1.0));
-        let render: Vec<Box<dyn Render>> = vec![
+        let render: Layers<Box<dyn Render>> = Layers(vec![
             Box::new(StyledGeom {
                 geom: Geom::from_box2d(&Box2DData::new(Point2DData::new(-0.5, -0.5), Point2DData::new(0.5, 0.5))),
                 color: [1.0, 0.0, 0.0, 1.0],
@@ -900,7 +942,7 @@ mod tests {
                 text: String::from("hello"),
                 location: Point2DData::new(0.0, 0.0),
             }),
-        ];
+        ]);
         graphics::capture(
             render,
             viewport,
@@ -913,7 +955,7 @@ mod tests {
     #[test]
     fn test_layers_text_on_bottom() {
         let viewport = Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(1.0, 1.0));
-        let render: Vec<Box<dyn Render>> = vec![
+        let render: Layers<Box<dyn Render>> = Layers(vec![
             Box::new(Text {
                 text: String::from("hello world"),
                 location: Point2DData::new(0.0, 0.0),
@@ -922,7 +964,7 @@ mod tests {
                 geom: Geom::from_box2d(&Box2DData::new(Point2DData::new(-0.5, -0.5), Point2DData::new(0.5, 0.5))),
                 color: [1.0, 0.0, 0.0, 1.0],
             }),
-        ];
+        ]);
         graphics::capture(
             render,
             viewport,

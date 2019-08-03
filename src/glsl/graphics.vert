@@ -6,7 +6,9 @@ layout(location = 2) in float z;
 layout(location = 0) out vec4 fragmentColor;
 
 void main() {
+    // pos is (x, y) and from (-1, -1) to (1, 1)
     // This works correctly b/c we're rendering to a square
-    gl_Position = vec4(pos, 0.0, 1.0);
+    // Switching Z so that higher z is rendered over lower z
+    gl_Position = vec4(pos, 1.0 - z, 1.0);
     fragmentColor = vertexColor;
 }
