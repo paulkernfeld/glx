@@ -8,6 +8,7 @@ use geo::haversine_distance::HaversineDistance;
 use geo_types::Point;
 
 pub mod graphics;
+pub mod plot;
 pub mod protos;
 
 use graphics::Point2DData;
