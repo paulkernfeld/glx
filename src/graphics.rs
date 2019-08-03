@@ -900,23 +900,63 @@ mod tests {
     #[test]
     fn test_layers() {
         let viewport = Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(1.0, 1.0));
-        let render: Layers<Box<dyn Render>> = Layers(vec![
-            Box::new(StyledGeom {
+        let render: Layers<StyledGeom> = Layers(vec![
+            StyledGeom {
                 geom: Geom::from_box2d(&Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(0.5, 0.5))),
                 color: [1.0, 0.0, 0.0, 1.0],
-            }),
-            Box::new(StyledGeom {
+            },
+            StyledGeom {
                 geom: Geom::from_box2d(&Box2DData::new(Point2DData::new(-1.0, -0.5), Point2DData::new(0.5, 1.0))),
                 color: [0.75, 0.0, 0.25, 1.0],
-            }),
-            Box::new(StyledGeom {
+            },
+            StyledGeom {
                 geom: Geom::from_box2d(&Box2DData::new(Point2DData::new(-0.5, -0.5), Point2DData::new(1.0, 1.0))),
                 color: [0.5, 0.0, 0.5, 1.0],
-            }),
-            Box::new(StyledGeom {
+            },
+            StyledGeom {
                 geom: Geom::from_box2d(&Box2DData::new(Point2DData::new(-0.5, -1.0), Point2DData::new(1.0, 0.5))),
                 color: [0.25, 0.0, 0.75, 1.0],
-            }),
+            },
+            StyledGeom {
+                geom: Geom::from_box2d(&Box2DData::new(Point2DData::new(-0.5, -0.5), Point2DData::new(0.5, 0.5))),
+                color: [0.0, 0.0, 1.0, 1.0],
+            },
+        ]);
+        graphics::capture(
+            render,
+            viewport,
+            PathBuf::from("output/layers.png"),
+            SIZE,
+        );
+    }
+
+    /// Bluer boxes should be on top
+    /// This currently behaves wrong b/c we need to track the highest z value in each component of
+    /// the layer, so that we can give a large enough z_0 to the next layer.
+    #[test]
+    fn test_layers_recursive() {
+        let viewport = Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(1.0, 1.0));
+        let render: Layers<Box<dyn Render>> = Layers(vec![
+            Box::new(Layers(vec![
+                StyledGeom {
+                    geom: Geom::from_box2d(&Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(0.5, 0.5))),
+                    color: [1.0, 0.0, 0.0, 1.0],
+                },
+                StyledGeom {
+                    geom: Geom::from_box2d(&Box2DData::new(Point2DData::new(-1.0, -0.5), Point2DData::new(0.5, 1.0))),
+                    color: [0.75, 0.0, 0.25, 1.0],
+                },
+                StyledGeom {
+                    geom: Geom::from_box2d(&Box2DData::new(Point2DData::new(-0.5, -0.5), Point2DData::new(1.0, 1.0))),
+                    color: [0.5, 0.0, 0.5, 1.0],
+                },
+            ])),
+            Box::new(
+                StyledGeom {
+                    geom: Geom::from_box2d(&Box2DData::new(Point2DData::new(-0.5, -1.0), Point2DData::new(1.0, 0.5))),
+                    color: [0.25, 0.0, 0.75, 1.0],
+                }
+            ),
             Box::new(StyledGeom {
                 geom: Geom::from_box2d(&Box2DData::new(Point2DData::new(-0.5, -0.5), Point2DData::new(0.5, 0.5))),
                 color: [0.0, 0.0, 1.0, 1.0],
@@ -925,7 +965,7 @@ mod tests {
         graphics::capture(
             render,
             viewport,
-            PathBuf::from("output/layers.png"),
+            PathBuf::from("output/layers_recursive.png"),
             SIZE,
         );
     }
