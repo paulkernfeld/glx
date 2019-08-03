@@ -881,6 +881,28 @@ mod tests {
         );
     }
 
+    /// Text should be on top
+    #[test]
+    fn test_layers_text_on_top() {
+        let viewport = Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(1.0, 1.0));
+        let render: Vec<Box<dyn Render>> = vec![
+            Box::new(StyledGeom {
+                geom: Geom::from_box2d(&Box2DData::new(Point2DData::new(-0.5, -0.5), Point2DData::new(0.5, 0.5))),
+                color: [1.0, 0.0, 0.0, 1.0],
+            }),
+            Box::new(Text {
+                text: String::from("hello"),
+                location: Point2DData::new(0.0, 0.0),
+            })
+        ];
+        graphics::capture(
+            render,
+            viewport,
+            PathBuf::from("output/layers_text_on_top.png"),
+            SIZE,
+        );
+    }
+
     #[test]
     fn test_layers_legend() {
         let viewport = Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(1.0, 1.0));
