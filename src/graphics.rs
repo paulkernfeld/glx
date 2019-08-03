@@ -73,11 +73,16 @@ enum MyPath {
     Stroked { path: Path, width: f32 },
 }
 
+pub struct Z<T> {
+    t: T,
+    z: f32,
+}
+
 // First version of a trait for rendering
 pub trait Render {
-    fn styled_geoms(&self) -> Vec<StyledGeom>;
+    fn styled_geoms(&self, z_0: f32) -> Vec<Z<StyledGeom>>;
 
-    fn texts(&self) -> Vec<Text>;
+    fn texts(&self, z_0: f32) -> Vec<Z<Text>>;
 }
 
 // This improved rendering trait is aware of the viewport and is responsible for clipping
@@ -91,29 +96,13 @@ pub trait Render2 {
     fn texts(&self, viewport: Box2DData) -> Vec<Text>;
 }
 
-impl<L: Render, R: Render> Render for Either<L, R> {
-    fn styled_geoms(&self) -> Vec<StyledGeom> {
-        match self {
-            Either::Left(l) => l.styled_geoms(),
-            Either::Right(r) => r.styled_geoms(),
-        }
-    }
-
-    fn texts(&self) -> Vec<Text> {
-        match self {
-            Either::Left(l) => l.texts(),
-            Either::Right(r) => r.texts(),
-        }
-    }
-}
-
 impl<T: Render + ?Sized> Render for Box<T> {
-    fn styled_geoms(&self) -> Vec<StyledGeom> {
-        self.as_ref().styled_geoms()
+    fn styled_geoms(&self, z_0: f32) -> Vec<Z<StyledGeom>> {
+        self.as_ref().styled_geoms(z_0)
     }
 
-    fn texts(&self) -> Vec<Text> {
-        self.as_ref().texts()
+    fn texts(&self, z_0: f32) -> Vec<Z<Text>> {
+        self.as_ref().texts(z_0)
     }
 }
 
@@ -149,7 +138,7 @@ pub struct FnGrid<F, G> {
 }
 
 impl<F: Fn(Point2DData) -> [f32; 4], G: Fn(Point2DData) -> String> Render for FnGrid<F, G> {
-    fn styled_geoms(&self) -> Vec<StyledGeom> {
+    fn styled_geoms(&self, z_0: f32) -> Vec<Z<StyledGeom>> {
         let viewport = self.viewport.unwrap();
         let min_x = (viewport.min.x / self.cell_size).floor() as isize;
         let min_y = (viewport.min.y / self.cell_size).floor() as isize;
@@ -161,7 +150,8 @@ impl<F: Fn(Point2DData) -> [f32; 4], G: Fn(Point2DData) -> String> Render for Fn
             let cell_x_min = x as f32 * self.cell_size;
             for y in min_y..=max_y {
                 let cell_y_min = y as f32 * self.cell_size;
-                cells.push(StyledGeom {
+                cells.push(Z {
+                    t: StyledGeom {
                     geom: Geom::Polygon(vec![
                         Point2DData::new(cell_x_min, cell_y_min),
                         Point2DData::new(cell_x_min + self.cell_size, cell_y_min),
@@ -172,13 +162,13 @@ impl<F: Fn(Point2DData) -> [f32; 4], G: Fn(Point2DData) -> String> Render for Fn
                         cell_x_min + self.cell_size * 0.5,
                         cell_y_min + self.cell_size * 0.5,
                     )),
-                })
+                }, z: z_0})
             }
         }
         cells
     }
 
-    fn texts(&self) -> Vec<Text> {
+    fn texts(&self, z_0: f32) -> Vec<Z<Text>> {
         let viewport = self.viewport.unwrap();
         let min_x = (viewport.min.x / self.cell_size).floor() as isize;
         let min_y = (viewport.min.y / self.cell_size).floor() as isize;
@@ -194,9 +184,12 @@ impl<F: Fn(Point2DData) -> [f32; 4], G: Fn(Point2DData) -> String> Render for Fn
                     cell_x_min + self.cell_size * 0.5,
                     cell_y_min + self.cell_size * 0.5,
                 );
-                cells.push(Text {
-                    text: (self.label_fn)(location),
-                    location,
+                cells.push(Z {
+                    t: Text {
+                        text: (self.label_fn)(location),
+                        location,
+                    },
+                    z: z_0 + 1.0,
                 })
             }
         }
@@ -267,11 +260,11 @@ pub struct StyledGeom {
 }
 
 impl Render for StyledGeom {
-    fn styled_geoms(&self) -> Vec<StyledGeom> {
-        vec![self.clone()]
+    fn styled_geoms(&self, z_0: f32) -> Vec<Z<StyledGeom>> {
+        vec![Z { t: self.clone(), z: z_0 }]
     }
 
-    fn texts(&self) -> Vec<Text> {
+    fn texts(&self, z_0: f32) -> Vec<Z<Text>> {
         vec![]
     }
 }
@@ -281,73 +274,73 @@ pub struct Series {
     pub color: [f32; 4],
 }
 
-pub struct Legend {
-    pub title: String,
-    pub series: Vec<Series>,
-    /// In data space, unfortunately. Should this eventually be in screen space or -1..1 space?
-    pub area: Box2DData,
-}
-
-impl Render for Legend {
-    fn styled_geoms(&self) -> Vec<StyledGeom> {
-        let mut styled_geoms = vec![StyledGeom {
-            geom: Geom::from_box2d(&self.area),
-            color: [0.5, 0.5, 1.0, 1.0],
-        }];
-
-        let serieses = Box2DData::new(
-            Point2DData::new(
-                self.area.min.x,
-                self.area.min.y * 0.75 + self.area.max.y * 0.25,
-            ),
-            Point2DData::new(self.area.max.x, self.area.max.y),
-        );
-
-        for (series, series_box) in self
-            .series
-            .iter()
-            .zip(slice_box2d(serieses, self.series.len()))
-        {
-            styled_geoms.push(StyledGeom {
-                geom: Geom::from_box2d(&series_box),
-                color: series.color,
-            });
-        }
-
-        styled_geoms
-    }
-
-    fn texts(&self) -> Vec<Text> {
-        let mut texts = vec![Text {
-            text: self.title.clone(),
-            location: Point2DData::new(
-                self.area.min.x * 0.5 + self.area.max.x * 0.5,
-                self.area.min.y * 0.9 + self.area.max.y * 0.1,
-            ),
-        }];
-
-        let serieses = Box2DData::new(
-            Point2DData::new(
-                self.area.min.x,
-                self.area.min.y * 0.75 + self.area.max.y * 0.25,
-            ),
-            Point2DData::new(self.area.max.x, self.area.max.y),
-        );
-
-        for (series, series_box) in self
-            .series
-            .iter()
-            .zip(slice_box2d(serieses, self.series.len()))
-        {
-            texts.push(Text {
-                text: series.title.clone(),
-                location: series_box.center(),
-            })
-        }
-
-        texts
-    }
-}
+//pub struct Legend {
+//    pub title: String,
+//    pub series: Vec<Series>,
+//    /// In data space, unfortunately. Should this eventually be in screen space or -1..1 space?
+//    pub area: Box2DData,
+//}
+//
+//impl Render for Legend {
+//    fn styled_geoms(&self) -> Vec<StyledGeom> {
+//        let mut styled_geoms = vec![StyledGeom {
+//            geom: Geom::from_box2d(&self.area),
+//            color: [0.5, 0.5, 1.0, 1.0],
+//        }];
+//
+//        let serieses = Box2DData::new(
+//            Point2DData::new(
+//                self.area.min.x,
+//                self.area.min.y * 0.75 + self.area.max.y * 0.25,
+//            ),
+//            Point2DData::new(self.area.max.x, self.area.max.y),
+//        );
+//
+//        for (series, series_box) in self
+//            .series
+//            .iter()
+//            .zip(slice_box2d(serieses, self.series.len()))
+//        {
+//            styled_geoms.push(StyledGeom {
+//                geom: Geom::from_box2d(&series_box),
+//                color: series.color,
+//            });
+//        }
+//
+//        styled_geoms
+//    }
+//
+//    fn texts(&self) -> Vec<Text> {
+//        let mut texts = vec![Text {
+//            text: self.title.clone(),
+//            location: Point2DData::new(
+//                self.area.min.x * 0.5 + self.area.max.x * 0.5,
+//                self.area.min.y * 0.9 + self.area.max.y * 0.1,
+//            ),
+//        }];
+//
+//        let serieses = Box2DData::new(
+//            Point2DData::new(
+//                self.area.min.x,
+//                self.area.min.y * 0.75 + self.area.max.y * 0.25,
+//            ),
+//            Point2DData::new(self.area.max.x, self.area.max.y),
+//        );
+//
+//        for (series, series_box) in self
+//            .series
+//            .iter()
+//            .zip(slice_box2d(serieses, self.series.len()))
+//        {
+//            texts.push(Text {
+//                text: series.title.clone(),
+//                location: series_box.center(),
+//            })
+//        }
+//
+//        texts
+//    }
+//}
 
 fn slice_box2d(box2d: Box2DData, n_slices: usize) -> impl Iterator<Item = Box2DData> {
     (0..n_slices).map(move |i| {
@@ -387,12 +380,15 @@ pub struct Text {
 }
 
 impl Render for Text {
-    fn styled_geoms(&self) -> Vec<StyledGeom> {
+    fn styled_geoms(&self, z_0: f32) -> Vec<Z<StyledGeom>> {
         vec![]
     }
 
-    fn texts(&self) -> Vec<Text> {
-        vec![self.clone()]
+    fn texts(&self, z_0: f32) -> Vec<Z<Text>> {
+        vec![Z {
+            t: self.clone(),
+            z: z_0,
+        }]
     }
 }
 
@@ -411,13 +407,14 @@ impl Render2 for Text {
     }
 }
 
+// Eh let's deprecate this and make the z relationship more explicit
 impl<R: Render> Render for Vec<R> {
-    fn styled_geoms(&self) -> Vec<StyledGeom> {
-        self.iter().flat_map(|r| r.styled_geoms()).collect()
+    fn styled_geoms(&self, z_0: f32) -> Vec<Z<StyledGeom>> {
+        self.iter().flat_map(|r| r.styled_geoms(0.0)).collect()
     }
 
-    fn texts(&self) -> Vec<Text> {
-        self.iter().flat_map(|r| r.texts()).collect()
+    fn texts(&self, z_0: f32) -> Vec<Z<Text>> {
+        self.iter().flat_map(|r| r.texts(0.0)).collect()
     }
 }
 
@@ -502,7 +499,7 @@ fn geom_to_path(geom: Geom, viewport: Box2DData, screen: Vector2D<usize>) -> MyP
 }
 
 fn create_vertices(
-    styled_geoms: Vec<StyledGeom>,
+    styled_geoms: Vec<Z<StyledGeom>>,
     screen: Vector2D<usize>,
     viewport: Box2DData,
 ) -> (Vec<Vertex>, Vec<u32>) {
@@ -518,8 +515,8 @@ fn create_vertices(
         .with_tolerance(tolerance);
     let stroke_options = StrokeOptions::DEFAULT.with_tolerance(tolerance);
 
-    for styled_geom in styled_geoms.iter() {
-        match geom_to_path(styled_geom.geom.clone(), viewport, screen) {
+    for z_styled_geom in styled_geoms.iter() {
+        match geom_to_path(z_styled_geom.t.geom.clone(), viewport, screen) {
             MyPath::Filled(path) => {
                 fill_tessellator
                     .tessellate_path(
@@ -527,7 +524,8 @@ fn create_vertices(
                         &fill_options,
                         &mut BuffersBuilder::new(&mut geometry, |vertex: FillVertex| Vertex {
                             _pos: [vertex.position.x, vertex.position.y],
-                            _color: styled_geom.color,
+//                            _z: z_styled_geom.z,
+                            _color: z_styled_geom.t.color,
                         }),
                     )
                     .unwrap();
@@ -539,7 +537,8 @@ fn create_vertices(
                         &stroke_options.with_line_width(width),
                         &mut BuffersBuilder::new(&mut geometry, |vertex: StrokeVertex| Vertex {
                             _pos: [vertex.position.x, vertex.position.y],
-                            _color: styled_geom.color,
+//                            _z: z_styled_geom.z,
+                            _color: z_styled_geom.t.color,
                         }),
                     )
                     .unwrap();
@@ -586,9 +585,10 @@ pub fn capture<R: Render>(render: R, viewport: Box2DData, path: std::path::PathB
     let fs_module = device.create_shader_module(&fs_bytes);
 
     let vertex_size = std::mem::size_of::<Vertex>();
+    assert_eq!(vertex_size, 4 * 6);
 
     let (vertex_data, index_data) = create_vertices(
-        render.styled_geoms(),
+        render.styled_geoms(0.0),
         Vector2D::new(size as usize, size as usize),
         viewport,
     );
@@ -657,7 +657,7 @@ pub fn capture<R: Render>(render: R, viewport: Box2DData, path: std::path::PathB
                 },
                 wgpu::VertexAttributeDescriptor {
                     format: wgpu::VertexFormat::Float4,
-                    offset: 8, // Because this is preceded by two 4-byte floats?
+                    offset: 8, // Because this is preceded by a 4-byte float?
                     shader_location: 1,
                 },
             ],
@@ -726,10 +726,10 @@ pub fn capture<R: Render>(render: R, viewport: Box2DData, path: std::path::PathB
             rpass.draw_indexed(0..(index_data.len() as u32), 0, 0..1);
         }
 
-        for text in render.texts() {
+        for z_text in render.texts(0.0) {
             glyph_brush.queue(Section {
-                text: &text.text,
-                screen_position: transform_window(transform_viewport(&text.location, &viewport))
+                text: &z_text.t.text,
+                screen_position: transform_window(transform_viewport(&z_text.t.location, &viewport))
                     .to_tuple(),
                 color: [0.0, 0.0, 0.0, 1.0],
                 scale: Scale { x: 40.0, y: 40.0 },
@@ -737,7 +737,7 @@ pub fn capture<R: Render>(render: R, viewport: Box2DData, path: std::path::PathB
                 layout: Layout::default_single_line()
                     .h_align(HorizontalAlign::Center)
                     .v_align(VerticalAlign::Center),
-//                z: 2.0,  // Put it in foreground
+                z: z_text.z,
                 ..Section::default()
             });
         }
@@ -893,7 +893,7 @@ mod tests {
             Box::new(Text {
                 text: String::from("hello"),
                 location: Point2DData::new(0.0, 0.0),
-            })
+            }),
         ];
         graphics::capture(
             render,
@@ -903,61 +903,83 @@ mod tests {
         );
     }
 
+    /// Text should be on bottom
     #[test]
-    fn test_layers_legend() {
+    fn test_layers_text_on_bottom() {
         let viewport = Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(1.0, 1.0));
         let render: Vec<Box<dyn Render>> = vec![
+            Box::new(Text {
+                text: String::from("hello world"),
+                location: Point2DData::new(0.0, 0.0),
+            }),
             Box::new(StyledGeom {
-                geom: Geom::from_box2d(&viewport),
+                geom: Geom::from_box2d(&Box2DData::new(Point2DData::new(-0.5, -0.5), Point2DData::new(0.5, 0.5))),
                 color: [1.0, 0.0, 0.0, 1.0],
-            }),
-            Box::new(Legend {
-                title: String::from("Background"),
-                series: (0..10)
-                    .map(|i| Series {
-                        title: format!("Background {}", i),
-                        color: [0.0, 0.0, i as f32 / 9.0, 1.0],
-                    })
-                    .collect(),
-                area: Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(0.5, 0.5)),
-            }),
-            Box::new(Legend {
-                title: String::from("Foreground"),
-                series: (0..10)
-                    .map(|i| Series {
-                        title: format!("Foreground {}", i),
-                        color: [0.0, i as f32 / 9.0, 0.0, 1.0],
-                    })
-                    .collect(),
-                area: Box2DData::new(Point2DData::new(-0.5, -0.5), Point2DData::new(1.0, 1.0)),
             }),
         ];
         graphics::capture(
             render,
             viewport,
-            PathBuf::from("output/layers_legend.png"),
+            PathBuf::from("output/layers_text_on_bottom.png"),
             SIZE,
         );
     }
 
-    #[test]
-    fn test_legend() {
-        graphics::capture(
-            Legend {
-                title: String::from("Legend"),
-                series: (0..10)
-                    .map(|i| Series {
-                        title: format!("Series {}", i),
-                        color: [0.0, 0.0, i as f32 / 9.0, 1.0],
-                    })
-                    .collect(),
-                area: Box2DData::new(Point2DData::new(-0.5, -0.5), Point2DData::new(0.5, 0.5)),
-            },
-            Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(1.0, 1.0)),
-            PathBuf::from("output/legend.png"),
-            SIZE,
-        );
-    }
+//    #[test]
+//    fn test_layers_legend() {
+//        let viewport = Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(1.0, 1.0));
+//        let render: Vec<Box<dyn Render>> = vec![
+//            Box::new(StyledGeom {
+//                geom: Geom::from_box2d(&viewport),
+//                color: [1.0, 0.0, 0.0, 1.0],
+//            }),
+//            Box::new(Legend {
+//                title: String::from("Background"),
+//                series: (0..10)
+//                    .map(|i| Series {
+//                        title: format!("Background {}", i),
+//                        color: [0.0, 0.0, i as f32 / 9.0, 1.0],
+//                    })
+//                    .collect(),
+//                area: Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(0.5, 0.5)),
+//            }),
+//            Box::new(Legend {
+//                title: String::from("Foreground"),
+//                series: (0..10)
+//                    .map(|i| Series {
+//                        title: format!("Foreground {}", i),
+//                        color: [0.0, i as f32 / 9.0, 0.0, 1.0],
+//                    })
+//                    .collect(),
+//                area: Box2DData::new(Point2DData::new(-0.5, -0.5), Point2DData::new(1.0, 1.0)),
+//            }),
+//        ];
+//        graphics::capture(
+//            render,
+//            viewport,
+//            PathBuf::from("output/layers_legend.png"),
+//            SIZE,
+//        );
+//    }
+//
+//    #[test]
+//    fn test_legend() {
+//        graphics::capture(
+//            Legend {
+//                title: String::from("Legend"),
+//                series: (0..10)
+//                    .map(|i| Series {
+//                        title: format!("Series {}", i),
+//                        color: [0.0, 0.0, i as f32 / 9.0, 1.0],
+//                    })
+//                    .collect(),
+//                area: Box2DData::new(Point2DData::new(-0.5, -0.5), Point2DData::new(0.5, 0.5)),
+//            },
+//            Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(1.0, 1.0)),
+//            PathBuf::from("output/legend.png"),
+//            SIZE,
+//        );
+//    }
 
     #[test]
     fn test_line_width() {
