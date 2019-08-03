@@ -2,6 +2,7 @@
 
 layout(location = 0) in vec2 pos;
 layout(location = 1) in vec4 vertexColor;
+layout(location = 2) in float z;
 layout(location = 0) out vec4 fragmentColor;
 
 void main() {

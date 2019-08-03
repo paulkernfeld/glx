@@ -66,6 +66,7 @@ pub type Box2DData = TypedBox2D<f32, DataUnit>;
 pub struct Vertex {
     _pos: [f32; 2],
     _color: [f32; 4],
+    _z: f32,
 }
 
 enum MyPath {
@@ -524,7 +525,7 @@ fn create_vertices(
                         &fill_options,
                         &mut BuffersBuilder::new(&mut geometry, |vertex: FillVertex| Vertex {
                             _pos: [vertex.position.x, vertex.position.y],
-//                            _z: z_styled_geom.z,
+                            _z: z_styled_geom.z,
                             _color: z_styled_geom.t.color,
                         }),
                     )
@@ -537,7 +538,7 @@ fn create_vertices(
                         &stroke_options.with_line_width(width),
                         &mut BuffersBuilder::new(&mut geometry, |vertex: StrokeVertex| Vertex {
                             _pos: [vertex.position.x, vertex.position.y],
-//                            _z: z_styled_geom.z,
+                            _z: z_styled_geom.z,
                             _color: z_styled_geom.t.color,
                         }),
                     )
@@ -585,7 +586,7 @@ pub fn capture<R: Render>(render: R, viewport: Box2DData, path: std::path::PathB
     let fs_module = device.create_shader_module(&fs_bytes);
 
     let vertex_size = std::mem::size_of::<Vertex>();
-    assert_eq!(vertex_size, 4 * 6);
+    assert_eq!(vertex_size, 4 * 7);
 
     let (vertex_data, index_data) = create_vertices(
         render.styled_geoms(0.0),
@@ -657,8 +658,13 @@ pub fn capture<R: Render>(render: R, viewport: Box2DData, path: std::path::PathB
                 },
                 wgpu::VertexAttributeDescriptor {
                     format: wgpu::VertexFormat::Float4,
-                    offset: 8, // Because this is preceded by a 4-byte float?
+                    offset: 8, // Because this is preceded by two 4-byte floats?
                     shader_location: 1,
+                },
+                wgpu::VertexAttributeDescriptor {
+                    format: wgpu::VertexFormat::Float,
+                    offset: 16, // Because this is preceded by 4x4-byte float?
+                    shader_location: 2,
                 },
             ],
         }],
