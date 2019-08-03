@@ -3,7 +3,7 @@ name = "glx"
 version = "0.1.0"
 authors = ["Paul Kernfeld <paulkernfeld@gmail.com>"]
 edition = "2018"
-#build = false  # this is slightly slow and also messes up "cargo watch"
+build = false  # this is slightly slow and also messes up "cargo watch"
 
 [dependencies]
 byteorder = "*"
