@@ -266,7 +266,7 @@ fn main() {
 
     let time_to_color = |time| scale_temperature(1.0 - (time - 10.0) / 40.0, n_zones as f32);
 
-    let render: Vec<Box<Render>> = vec![
+    let render: Layers<Box<Render>> = Layers(vec![
         Box::new(FnGrid {
             viewport: Some(viewport),
             cell_size: 300.0,
@@ -289,7 +289,7 @@ fn main() {
                 format!("{}", best_after.time as usize)
             },
         }),
-        Box::new(osm_styled_geoms),
+        Box::new(Layer(osm_styled_geoms)),
 //        Box::new(Legend {
 //            title: String::from("Time to Downtown Boston"),
 //            series: (0..n_zones)
@@ -306,7 +306,7 @@ fn main() {
 //                Point2DData::new(3000.0, -1500.0),
 //            ),
 //        }),
-    ];
+    ]);
 
     graphics::capture(render, viewport, PathBuf::from("output/map.png"), 4096);
 }
