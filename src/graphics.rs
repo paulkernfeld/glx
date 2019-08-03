@@ -411,13 +411,18 @@ impl Render2 for Text {
 
 pub struct Layers<R>(pub Vec<R>);
 
+// TODO we need to use the max depth from layer N to calculate the depth of layer N+1
+fn get_depth(z_0: f32, layer_i: usize) -> f32 {
+    z_0 - layer_i as f32 * 0.001
+}
+
 impl<R: Render> Render for Layers<R> {
     fn styled_geoms(&self, z_0: f32) -> Vec<Z<StyledGeom>> {
-        self.0.iter().enumerate().flat_map(|(i, r)| r.styled_geoms(z_0 + i as f32 * 0.001)).collect()
+        self.0.iter().enumerate().flat_map(|(i, r)| r.styled_geoms(get_depth(z_0, i))).collect()
     }
 
     fn texts(&self, z_0: f32) -> Vec<Z<Text>> {
-        self.0.iter().enumerate().flat_map(|(i, r)| r.texts(z_0 + i as f32 * 0.001)).collect()
+        self.0.iter().enumerate().flat_map(|(i, r)| r.texts(get_depth(z_0, i))).collect()
     }
 }
 
@@ -540,7 +545,7 @@ fn create_vertices(
                         &mut BuffersBuilder::new(&mut geometry, |vertex: FillVertex| Vertex {
                             _pos: [vertex.position.x, vertex.position.y],
                             _color: z_styled_geom.t.color,
-                            _z: z_styled_geom.z,
+                            _z: dbg!(z_styled_geom.z),
                         }),
                     )
                     .unwrap();
@@ -603,8 +608,11 @@ pub fn capture<R: Render>(render: R, viewport: Box2DData, path: std::path::PathB
     let vertex_size = std::mem::size_of::<Vertex>();
     assert_eq!(vertex_size, 4 * 7);
 
+    // Farthest from the (orthographic?) camera
+    let z_0 = 1.0;
+
     let (vertex_data, index_data) = create_vertices(
-        render.styled_geoms(0.0),
+        render.styled_geoms(z_0),
         Vector2D::new(size as usize, size as usize),
         viewport,
     );
@@ -775,7 +783,7 @@ pub fn capture<R: Render>(render: R, viewport: Box2DData, path: std::path::PathB
             rpass.draw_indexed(0..(index_data.len() as u32), 0, 0..1);
         }
 
-        for z_text in render.texts(0.0) {
+        for z_text in render.texts(z_0) {
             glyph_brush.queue(Section {
                 text: &z_text.t.text,
                 screen_position: transform_window(transform_viewport(&z_text.t.location, &viewport))
@@ -786,7 +794,7 @@ pub fn capture<R: Render>(render: R, viewport: Box2DData, path: std::path::PathB
                 layout: Layout::default_single_line()
                     .h_align(HorizontalAlign::Center)
                     .v_align(VerticalAlign::Center),
-                z: z_text.z,
+                z: dbg!(z_text.z),
                 ..Section::default()
             });
         }
