@@ -156,17 +156,22 @@ impl<F: Fn(Point2DData) -> [f32; 4], G: Fn(Point2DData) -> String> Render for Fn
                 let cell_y_min = y as f32 * self.cell_size;
                 cells.push(Z {
                     t: StyledGeom {
-                    geom: Geom::Polygon(vec![
-                        Point2DData::new(cell_x_min, cell_y_min),
-                        Point2DData::new(cell_x_min + self.cell_size, cell_y_min),
-                        Point2DData::new(cell_x_min + self.cell_size, cell_y_min + self.cell_size),
-                        Point2DData::new(cell_x_min, cell_y_min + self.cell_size),
-                    ]),
-                    color: (self.color_fn)(Point2DData::new(
-                        cell_x_min + self.cell_size * 0.5,
-                        cell_y_min + self.cell_size * 0.5,
-                    )),
-                }, z: z_0})
+                        geom: Geom::Polygon(vec![
+                            Point2DData::new(cell_x_min, cell_y_min),
+                            Point2DData::new(cell_x_min + self.cell_size, cell_y_min),
+                            Point2DData::new(
+                                cell_x_min + self.cell_size,
+                                cell_y_min + self.cell_size,
+                            ),
+                            Point2DData::new(cell_x_min, cell_y_min + self.cell_size),
+                        ]),
+                        color: (self.color_fn)(Point2DData::new(
+                            cell_x_min + self.cell_size * 0.5,
+                            cell_y_min + self.cell_size * 0.5,
+                        )),
+                    },
+                    z: z_0,
+                })
             }
         }
         cells
@@ -265,7 +270,10 @@ pub struct StyledGeom {
 
 impl Render for StyledGeom {
     fn styled_geoms(&self, z_0: f32) -> Vec<Z<StyledGeom>> {
-        vec![Z { t: self.clone(), z: z_0 }]
+        vec![Z {
+            t: self.clone(),
+            z: z_0,
+        }]
     }
 
     fn texts(&self, z_0: f32) -> Vec<Z<Text>> {
@@ -347,11 +355,19 @@ fn get_depth(z_0: f32, layer_i: usize) -> f32 {
 
 impl<R: Render> Render for Layers<R> {
     fn styled_geoms(&self, z_0: f32) -> Vec<Z<StyledGeom>> {
-        self.0.iter().enumerate().flat_map(|(i, r)| r.styled_geoms(get_depth(z_0, i))).collect()
+        self.0
+            .iter()
+            .enumerate()
+            .flat_map(|(i, r)| r.styled_geoms(get_depth(z_0, i)))
+            .collect()
     }
 
     fn texts(&self, z_0: f32) -> Vec<Z<Text>> {
-        self.0.iter().enumerate().flat_map(|(i, r)| r.texts(get_depth(z_0, i))).collect()
+        self.0
+            .iter()
+            .enumerate()
+            .flat_map(|(i, r)| r.texts(get_depth(z_0, i)))
+            .collect()
     }
 }
 
@@ -359,11 +375,19 @@ pub struct Layer<R>(pub Vec<R>);
 
 impl<R: Render> Render for Layer<R> {
     fn styled_geoms(&self, z_0: f32) -> Vec<Z<StyledGeom>> {
-        self.0.iter().enumerate().flat_map(|(i, r)| r.styled_geoms(z_0)).collect()
+        self.0
+            .iter()
+            .enumerate()
+            .flat_map(|(i, r)| r.styled_geoms(z_0))
+            .collect()
     }
 
     fn texts(&self, z_0: f32) -> Vec<Z<Text>> {
-        self.0.iter().enumerate().flat_map(|(i, r)| r.texts(z_0)).collect()
+        self.0
+            .iter()
+            .enumerate()
+            .flat_map(|(i, r)| r.texts(z_0))
+            .collect()
     }
 }
 
@@ -474,7 +498,7 @@ fn create_vertices(
                         &mut BuffersBuilder::new(&mut geometry, |vertex: FillVertex| Vertex {
                             _pos: [vertex.position.x, vertex.position.y],
                             _color: z_styled_geom.t.color,
-                            _z: z_styled_geom.z,
+                            _z: dbg!(z_styled_geom.z),
                         }),
                     )
                     .unwrap();
@@ -565,6 +589,16 @@ pub fn capture<R: Render>(render: R, viewport: Box2DData, path: std::path::PathB
         bind_group_layouts: &[&bind_group_layout],
     });
 
+    let depth_stencil_state_descriptor = wgpu::DepthStencilStateDescriptor {
+        format: depth_format,
+        depth_write_enabled: true,
+        depth_compare: wgpu::CompareFunction::LessEqual,
+        stencil_front: wgpu::StencilStateFaceDescriptor::IGNORE,
+        stencil_back: wgpu::StencilStateFaceDescriptor::IGNORE,
+        stencil_read_mask: 0,
+        stencil_write_mask: 0,
+    };
+
     let render_pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
         layout: &pipeline_layout,
         vertex_stage: wgpu::PipelineStageDescriptor {
@@ -597,15 +631,7 @@ pub fn capture<R: Render>(render: R, viewport: Box2DData, path: std::path::PathB
             },
             write_mask: wgpu::ColorWrite::ALL,
         }],
-        depth_stencil_state: Some(wgpu::DepthStencilStateDescriptor {
-            format: depth_format,
-            depth_write_enabled: true,
-            depth_compare: wgpu::CompareFunction::LessEqual,
-            stencil_front: wgpu::StencilStateFaceDescriptor::IGNORE,
-            stencil_back: wgpu::StencilStateFaceDescriptor::IGNORE,
-            stencil_read_mask: 0,
-            stencil_write_mask: 0,
-        }),
+        depth_stencil_state: Some(depth_stencil_state_descriptor.clone()),
         index_format: wgpu::IndexFormat::Uint32,
         vertex_buffers: &[wgpu::VertexBufferDescriptor {
             stride: vertex_size as u64,
@@ -632,7 +658,7 @@ pub fn capture<R: Render>(render: R, viewport: Box2DData, path: std::path::PathB
     });
 
     // The output buffer lets us retrieve the data as an array
-    let output_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+    let target_buffer = device.create_buffer(&wgpu::BufferDescriptor {
         size: (size * size * std::mem::size_of::<u32>() as u32) as u64,
         usage: wgpu::BufferUsage::MAP_READ,
     });
@@ -656,7 +682,7 @@ pub fn capture<R: Render>(render: R, viewport: Box2DData, path: std::path::PathB
     let depth_view = depth_texture.create_default_view();
 
     // The render pipeline renders data into this texture
-    let texture = device.create_texture(&wgpu::TextureDescriptor {
+    let target = device.create_texture(&wgpu::TextureDescriptor {
         size: texture_extent,
         array_layer_count: 1,
         mip_level_count: 1,
@@ -665,7 +691,7 @@ pub fn capture<R: Render>(render: R, viewport: Box2DData, path: std::path::PathB
         format: texture_format,
         usage: wgpu::TextureUsage::STORAGE,
     });
-    let texture_view = texture.create_default_view();
+    let target_view = target.create_default_view();
 
     // Transform from (-1..1) to pixels
     let transform_window = |location: Point2D<f32>| {
@@ -678,8 +704,9 @@ pub fn capture<R: Render>(render: R, viewport: Box2DData, path: std::path::PathB
     // Prepare glyph_brush
     let font: &[u8] =
         include_bytes!("font/cooper-hewitt-fixed-for-windows-master/CooperHewitt-Semibold.ttf");
-    let mut glyph_brush =
-        GlyphBrushBuilder::using_font_bytes(font).build(&mut device, texture_format);
+    let mut glyph_brush = GlyphBrushBuilder::using_font_bytes(font)
+        .depth_stencil_state(depth_stencil_state_descriptor)
+        .build(&mut device, texture_format);
 
     let command_buffer = {
         let mut encoder =
@@ -689,7 +716,7 @@ pub fn capture<R: Render>(render: R, viewport: Box2DData, path: std::path::PathB
         {
             let mut rpass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 color_attachments: &[wgpu::RenderPassColorAttachmentDescriptor {
-                    attachment: &texture_view,
+                    attachment: &target_view,
                     resolve_target: None,
                     load_op: wgpu::LoadOp::Clear,
                     store_op: wgpu::StoreOp::Store,
@@ -715,8 +742,11 @@ pub fn capture<R: Render>(render: R, viewport: Box2DData, path: std::path::PathB
         for z_text in render.texts(z_0) {
             glyph_brush.queue(Section {
                 text: &z_text.t.text,
-                screen_position: transform_window(transform_viewport(&z_text.t.location, &viewport))
-                    .to_tuple(),
+                screen_position: transform_window(transform_viewport(
+                    &z_text.t.location,
+                    &viewport,
+                ))
+                .to_tuple(),
                 color: [0.0, 0.0, 0.0, 1.0],
                 scale: Scale { x: 40.0, y: 40.0 },
                 bounds: (size as f32, size as f32),
@@ -730,19 +760,34 @@ pub fn capture<R: Render>(render: R, viewport: Box2DData, path: std::path::PathB
 
         // Draw queued texts
         glyph_brush
-            .draw_queued(&mut device, &mut encoder, &texture_view, size, size)
+            .draw_queued(
+                &mut device,
+                &mut encoder,
+                &target_view,
+                wgpu::RenderPassDepthStencilAttachmentDescriptor {
+                    attachment: &depth_view,
+                    depth_load_op: wgpu::LoadOp::Load,
+                    depth_store_op: wgpu::StoreOp::Store,
+                    stencil_load_op: wgpu::LoadOp::Load,
+                    stencil_store_op: wgpu::StoreOp::Store,
+                    clear_depth: 1.0,
+                    clear_stencil: 0,
+                },
+                size,
+                size,
+            )
             .unwrap();
 
-        // Copy the data from the texture to the buffer
+        // Copy the data from the target to a buffer
         encoder.copy_texture_to_buffer(
             wgpu::TextureCopyView {
-                texture: &texture,
+                texture: &target,
                 mip_level: 0,
                 array_layer: 0,
                 origin: wgpu::Origin3d::ZERO,
             },
             wgpu::BufferCopyView {
-                buffer: &output_buffer,
+                buffer: &target_buffer,
                 offset: 0,
                 row_pitch: std::mem::size_of::<u32>() as u32 * size,
                 image_height: size,
@@ -757,7 +802,7 @@ pub fn capture<R: Render>(render: R, viewport: Box2DData, path: std::path::PathB
     device.get_queue().submit(&[command_buffer]);
 
     // Dump the image into a PNG
-    output_buffer.map_read_async(
+    target_buffer.map_read_async(
         0,
         (std::mem::size_of::<u32>() as u32 * size * size) as u64,
         move |result: wgpu::BufferMapAsyncResult<&[u8]>| {
@@ -779,57 +824,57 @@ mod tests {
     use log::*;
     use std::path::PathBuf;
 
-//    #[test]
-//    fn test_fn_grid() {
-//        let viewport = Box2DData::new(Point2DData::new(-2.0, -2.0), Point2DData::new(2.0, 2.0));
-//        graphics::capture(
-//            vec![FnGrid {
-//                viewport: Some(viewport),
-//                cell_size: 1.0,
-//                color_fn: |point: Point2DData| {
-//                    [0.0, (point.x + 2.0) / 4.0, (point.y + 2.0) / 4.0, 1.0]
-//                },
-//                label_fn: |point: Point2DData| format!("{}", point),
-//            }],
-//            viewport,
-//            PathBuf::from("output/fn_grid.png"),
-//            TEST_SIZE,
-//        );
-//    }
+    //    #[test]
+    //    fn test_fn_grid() {
+    //        let viewport = Box2DData::new(Point2DData::new(-2.0, -2.0), Point2DData::new(2.0, 2.0));
+    //        graphics::capture(
+    //            vec![FnGrid {
+    //                viewport: Some(viewport),
+    //                cell_size: 1.0,
+    //                color_fn: |point: Point2DData| {
+    //                    [0.0, (point.x + 2.0) / 4.0, (point.y + 2.0) / 4.0, 1.0]
+    //                },
+    //                label_fn: |point: Point2DData| format!("{}", point),
+    //            }],
+    //            viewport,
+    //            PathBuf::from("output/fn_grid.png"),
+    //            TEST_SIZE,
+    //        );
+    //    }
 
-//    #[test]
-//    fn test_fn_grid_lots() {
-//        let viewport = Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(1.0, 1.0));
-//        graphics::capture(
-//            vec![FnGrid {
-//                viewport: Some(viewport),
-//                cell_size: 0.5,
-//                color_fn: |point: Point2DData| [0.0, point.x, point.y, 1.0],
-//                label_fn: |point: Point2DData| String::from(","),
-//            }],
-//            viewport,
-//            PathBuf::from("output/fn_grid_lots.png"),
-//            TEST_SIZE,
-//        );
-//    }
+    //    #[test]
+    //    fn test_fn_grid_lots() {
+    //        let viewport = Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(1.0, 1.0));
+    //        graphics::capture(
+    //            vec![FnGrid {
+    //                viewport: Some(viewport),
+    //                cell_size: 0.5,
+    //                color_fn: |point: Point2DData| [0.0, point.x, point.y, 1.0],
+    //                label_fn: |point: Point2DData| String::from(","),
+    //            }],
+    //            viewport,
+    //            PathBuf::from("output/fn_grid_lots.png"),
+    //            TEST_SIZE,
+    //        );
+    //    }
 
     /// This grid is designed to be too be large to naively render on my graphics card
-//    #[test]
-//    #[ignore]
-//    fn test_fn_grid_many() {
-//        let viewport = Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(1.0, 1.0));
-//        graphics::capture(
-//            vec![FnGrid {
-//                viewport: Some(viewport),
-//                cell_size: 0.0005,
-//                color_fn: |point: Point2DData| [0.0, point.x, point.y, 1.0],
-//                label_fn: |point: Point2DData| String::from(""),
-//            }],
-//            viewport,
-//            PathBuf::from("output/fn_grid_many.png"),
-//            TEST_SIZE,
-//        );
-//    }
+    //    #[test]
+    //    #[ignore]
+    //    fn test_fn_grid_many() {
+    //        let viewport = Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(1.0, 1.0));
+    //        graphics::capture(
+    //            vec![FnGrid {
+    //                viewport: Some(viewport),
+    //                cell_size: 0.0005,
+    //                color_fn: |point: Point2DData| [0.0, point.x, point.y, 1.0],
+    //                label_fn: |point: Point2DData| String::from(""),
+    //            }],
+    //            viewport,
+    //            PathBuf::from("output/fn_grid_many.png"),
+    //            TEST_SIZE,
+    //        );
+    //    }
 
     /// Bluer boxes should be on top
     #[test]
@@ -837,23 +882,38 @@ mod tests {
         let viewport = Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(1.0, 1.0));
         let render: Layers<StyledGeom> = Layers(vec![
             StyledGeom {
-                geom: Geom::from_box2d(&Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(0.5, 0.5))),
+                geom: Geom::from_box2d(&Box2DData::new(
+                    Point2DData::new(-1.0, -1.0),
+                    Point2DData::new(0.5, 0.5),
+                )),
                 color: [1.0, 0.0, 0.0, 1.0],
             },
             StyledGeom {
-                geom: Geom::from_box2d(&Box2DData::new(Point2DData::new(-1.0, -0.5), Point2DData::new(0.5, 1.0))),
+                geom: Geom::from_box2d(&Box2DData::new(
+                    Point2DData::new(-1.0, -0.5),
+                    Point2DData::new(0.5, 1.0),
+                )),
                 color: [0.75, 0.0, 0.25, 1.0],
             },
             StyledGeom {
-                geom: Geom::from_box2d(&Box2DData::new(Point2DData::new(-0.5, -0.5), Point2DData::new(1.0, 1.0))),
+                geom: Geom::from_box2d(&Box2DData::new(
+                    Point2DData::new(-0.5, -0.5),
+                    Point2DData::new(1.0, 1.0),
+                )),
                 color: [0.5, 0.0, 0.5, 1.0],
             },
             StyledGeom {
-                geom: Geom::from_box2d(&Box2DData::new(Point2DData::new(-0.5, -1.0), Point2DData::new(1.0, 0.5))),
+                geom: Geom::from_box2d(&Box2DData::new(
+                    Point2DData::new(-0.5, -1.0),
+                    Point2DData::new(1.0, 0.5),
+                )),
                 color: [0.25, 0.0, 0.75, 1.0],
             },
             StyledGeom {
-                geom: Geom::from_box2d(&Box2DData::new(Point2DData::new(-0.5, -0.5), Point2DData::new(0.5, 0.5))),
+                geom: Geom::from_box2d(&Box2DData::new(
+                    Point2DData::new(-0.5, -0.5),
+                    Point2DData::new(0.5, 0.5),
+                )),
                 color: [0.0, 0.0, 1.0, 1.0],
             },
         ]);
@@ -874,26 +934,39 @@ mod tests {
         let render: Layers<Box<dyn Render>> = Layers(vec![
             Box::new(Layers(vec![
                 StyledGeom {
-                    geom: Geom::from_box2d(&Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(0.5, 0.5))),
+                    geom: Geom::from_box2d(&Box2DData::new(
+                        Point2DData::new(-1.0, -1.0),
+                        Point2DData::new(0.5, 0.5),
+                    )),
                     color: [1.0, 0.0, 0.0, 1.0],
                 },
                 StyledGeom {
-                    geom: Geom::from_box2d(&Box2DData::new(Point2DData::new(-1.0, -0.5), Point2DData::new(0.5, 1.0))),
+                    geom: Geom::from_box2d(&Box2DData::new(
+                        Point2DData::new(-1.0, -0.5),
+                        Point2DData::new(0.5, 1.0),
+                    )),
                     color: [0.75, 0.0, 0.25, 1.0],
                 },
                 StyledGeom {
-                    geom: Geom::from_box2d(&Box2DData::new(Point2DData::new(-0.5, -0.5), Point2DData::new(1.0, 1.0))),
+                    geom: Geom::from_box2d(&Box2DData::new(
+                        Point2DData::new(-0.5, -0.5),
+                        Point2DData::new(1.0, 1.0),
+                    )),
                     color: [0.5, 0.0, 0.5, 1.0],
                 },
             ])),
-            Box::new(
-                StyledGeom {
-                    geom: Geom::from_box2d(&Box2DData::new(Point2DData::new(-0.5, -1.0), Point2DData::new(1.0, 0.5))),
-                    color: [0.25, 0.0, 0.75, 1.0],
-                }
-            ),
             Box::new(StyledGeom {
-                geom: Geom::from_box2d(&Box2DData::new(Point2DData::new(-0.5, -0.5), Point2DData::new(0.5, 0.5))),
+                geom: Geom::from_box2d(&Box2DData::new(
+                    Point2DData::new(-0.5, -1.0),
+                    Point2DData::new(1.0, 0.5),
+                )),
+                color: [0.25, 0.0, 0.75, 1.0],
+            }),
+            Box::new(StyledGeom {
+                geom: Geom::from_box2d(&Box2DData::new(
+                    Point2DData::new(-0.5, -0.5),
+                    Point2DData::new(0.5, 0.5),
+                )),
                 color: [0.0, 0.0, 1.0, 1.0],
             }),
         ]);
@@ -911,7 +984,10 @@ mod tests {
         let viewport = Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(1.0, 1.0));
         let render: Layers<Box<dyn Render>> = Layers(vec![
             Box::new(StyledGeom {
-                geom: Geom::from_box2d(&Box2DData::new(Point2DData::new(-0.5, -0.5), Point2DData::new(0.5, 0.5))),
+                geom: Geom::from_box2d(&Box2DData::new(
+                    Point2DData::new(-0.5, -0.5),
+                    Point2DData::new(0.5, 0.5),
+                )),
                 color: [1.0, 0.0, 0.0, 1.0],
             }),
             Box::new(Text {
@@ -937,7 +1013,10 @@ mod tests {
                 location: Point2DData::new(0.0, 0.0),
             }),
             Box::new(StyledGeom {
-                geom: Geom::from_box2d(&Box2DData::new(Point2DData::new(-0.5, -0.5), Point2DData::new(0.5, 0.5))),
+                geom: Geom::from_box2d(&Box2DData::new(
+                    Point2DData::new(-0.5, -0.5),
+                    Point2DData::new(0.5, 0.5),
+                )),
                 color: [1.0, 0.0, 0.0, 1.0],
             }),
         ]);
@@ -981,22 +1060,24 @@ mod tests {
         // This seems to be able to handle 100,000 lines but not 1,000,000
         let n = 1000;
         capture(
-            Layer((0..n)
-                .map(|i| {
-                    let ratio = (i as f32) / (n as f32);
-                    let angle = ratio * 2.0 * std::f32::consts::PI;
-                    StyledGeom {
-                        geom: Geom::Lines {
-                            points: vec![
-                                Point2DData::new(0.0, 0.0),
-                                Point2DData::new(angle.cos(), angle.sin()),
-                            ],
-                            width: 0.002,
-                        },
-                        color: scale_temperature(ratio, 16.0),
-                    }
-                })
-                .collect::<Vec<_>>()),
+            Layer(
+                (0..n)
+                    .map(|i| {
+                        let ratio = (i as f32) / (n as f32);
+                        let angle = ratio * 2.0 * std::f32::consts::PI;
+                        StyledGeom {
+                            geom: Geom::Lines {
+                                points: vec![
+                                    Point2DData::new(0.0, 0.0),
+                                    Point2DData::new(angle.cos(), angle.sin()),
+                                ],
+                                width: 0.002,
+                            },
+                            color: scale_temperature(ratio, 16.0),
+                        }
+                    })
+                    .collect::<Vec<_>>(),
+            ),
             Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(1.0, 1.0)),
             PathBuf::from("output/lines.png"),
             TEST_SIZE,

@@ -32,12 +32,12 @@ impl Legend {
             .series
             .iter()
             .zip(slice_box2d(serieses, self.series.len()))
-            {
-                styled_geoms.push(StyledGeom {
-                    geom: Geom::from_box2d(&series_box),
-                    color: series.color,
-                });
-            }
+        {
+            styled_geoms.push(StyledGeom {
+                geom: Geom::from_box2d(&series_box),
+                color: series.color,
+            });
+        }
 
         let mut texts = vec![Text {
             text: self.title.clone(),
@@ -59,18 +59,18 @@ impl Legend {
             .series
             .iter()
             .zip(slice_box2d(serieses, self.series.len()))
-            {
-                texts.push(Text {
-                    text: series.title.clone(),
-                    location: series_box.center(),
-                })
-            }
+        {
+            texts.push(Text {
+                text: series.title.clone(),
+                location: series_box.center(),
+            })
+        }
 
-        let x: Layers<Box<dyn Render>> = Layers(vec![Box::new(Layer(styled_geoms)), Box::new(Layer(texts))]);
+        let x: Layers<Box<dyn Render>> =
+            Layers(vec![Box::new(Layer(styled_geoms)), Box::new(Layer(texts))]);
         x
     }
 }
-
 
 mod tests {
     use super::*;
@@ -83,26 +83,32 @@ mod tests {
                 geom: Geom::from_box2d(&viewport),
                 color: [1.0, 0.0, 0.0, 1.0],
             }),
-            Box::new(Legend {
-                title: String::from("Background"),
-                series: (0..10)
-                    .map(|i| Series {
-                        title: format!("Background {}", i),
-                        color: [0.0, 0.0, i as f32 / 9.0, 1.0],
-                    })
-                    .collect(),
-                area: Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(0.5, 0.5)),
-            }.render()),
-            Box::new(Legend {
-                title: String::from("Foreground"),
-                series: (0..10)
-                    .map(|i| Series {
-                        title: format!("Foreground {}", i),
-                        color: [0.0, i as f32 / 9.0, 0.0, 1.0],
-                    })
-                    .collect(),
-                area: Box2DData::new(Point2DData::new(-0.5, -0.5), Point2DData::new(1.0, 1.0)),
-            }.render()),
+            Box::new(
+                Legend {
+                    title: String::from("Background"),
+                    series: (0..10)
+                        .map(|i| Series {
+                            title: format!("Background {}", i),
+                            color: [0.0, 0.0, i as f32 / 9.0, 1.0],
+                        })
+                        .collect(),
+                    area: Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(0.5, 0.5)),
+                }
+                .render(),
+            ),
+            Box::new(
+                Legend {
+                    title: String::from("Foreground"),
+                    series: (0..10)
+                        .map(|i| Series {
+                            title: format!("Foreground {}", i),
+                            color: [0.0, i as f32 / 9.0, 0.0, 1.0],
+                        })
+                        .collect(),
+                    area: Box2DData::new(Point2DData::new(-0.5, -0.5), Point2DData::new(1.0, 1.0)),
+                }
+                .render(),
+            ),
         ]);
         capture(
             render,
@@ -124,7 +130,8 @@ mod tests {
                     })
                     .collect(),
                 area: Box2DData::new(Point2DData::new(-0.5, -0.5), Point2DData::new(0.5, 0.5)),
-            }.render(),
+            }
+            .render(),
             Box2DData::new(Point2DData::new(-1.0, -1.0), Point2DData::new(1.0, 1.0)),
             PathBuf::from("output/legend.png"),
             TEST_SIZE,

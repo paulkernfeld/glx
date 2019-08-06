@@ -291,22 +291,25 @@ fn main() {
             },
         }),
         Box::new(Layer(osm_styled_geoms)),
-        Box::new(Legend {
-            title: String::from("Time to Downtown Boston"),
-            series: (0..n_zones)
-                .map(|i| {
-                    let time = 10.0 + (i as f32 + 0.5) * (40.0 - 10.0) / (n_zones as f32 - 1.0);
-                    Series {
-                        title: format!("{}", time),
-                        color: time_to_color(time),
-                    }
-                })
-                .collect(),
-            area: Box2DData::new(
-                Point2DData::new(1500.0, -3000.0),
-                Point2DData::new(3000.0, -1500.0),
-            ),
-        }.render()),
+        Box::new(
+            Legend {
+                title: String::from("Time to Downtown Boston"),
+                series: (0..n_zones)
+                    .map(|i| {
+                        let time = 10.0 + (i as f32 + 0.5) * (40.0 - 10.0) / (n_zones as f32 - 1.0);
+                        Series {
+                            title: format!("{}", time),
+                            color: time_to_color(time),
+                        }
+                    })
+                    .collect(),
+                area: Box2DData::new(
+                    Point2DData::new(1500.0, -3000.0),
+                    Point2DData::new(3000.0, -1500.0),
+                ),
+            }
+            .render(),
+        ),
     ]);
 
     graphics::capture(render, viewport, PathBuf::from("output/map.png"), 4096);

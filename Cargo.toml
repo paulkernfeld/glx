@@ -22,8 +22,8 @@ protobuf = "2"
 rayon = "1"
 # wgpu must EXACTLY match what's required by wgpu_glyph. I think that "*" will only bring in a published dep, it won't
 # bring in an arbitrary GitHub commit.
-wgpu = { "git" = "https://github.com/gfx-rs/wgpu-rs", "rev" = "a05eab15a1efeb9c5ac49c0b4bd2620bcf850a3a"}
-wgpu_glyph = { "git" = "https://github.com/hecrj/wgpu_glyph", "rev" = "40bc099"}
+wgpu = { "git" = "https://github.com/gfx-rs/wgpu-rs", "rev" = "5522c912f7e2f4f33a1167fb0c8ee4549f066dcf"}
+wgpu_glyph = { "git" = "https://github.com/hecrj/wgpu_glyph", "rev" = "f0362a5"}
 
 [dev-dependencies]
 lazy_static = "1"
