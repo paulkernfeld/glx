@@ -1,3 +1,5 @@
+*Archived 2025-01-22. Note that this code uses older versons of libraries that now have known security vulnerabilities, and I'm not planning to update the dependencies.*
+
 # Analyzing the Green Line Extension with OpenStreetMap
 
 This presentation chronicles my attempts to use Rust to understand how the Green Line Extension will affect commutes in Somerville.
